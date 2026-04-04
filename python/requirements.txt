@@ -1,0 +1,8 @@
+numpy>=1.26
+scipy>=1.13
+pandas>=2.2
+matplotlib>=3.8
+ipykernel>=6.29
+jupyter>=1.0
+flatbuffers>=24.3
+ipywidgets>=8.0

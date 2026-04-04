@@ -1,0 +1,16 @@
+// FlatBuffers schema for range pricer pricing request
+// Compile: flatc --cpp --python -o <out_dir> pricing_request.fbs
+
+namespace RangePricer;
+
+table PricingRequest {
+    request_id: string (required);
+    spot:       double;
+    low:        double;
+    high:       double;
+    vol:        double;
+    rate:       double;
+    expiry:     double;
+}
+
+root_type PricingRequest;
