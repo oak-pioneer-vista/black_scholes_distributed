@@ -22,4 +22,20 @@ double price(const RangePricer::PricingRequest& req) {
     return price(req.spot(), req.low(), req.high(), req.vol(), req.rate(), req.expiry());
 }
 
+std::vector<PricingResult> price_batch(const RangePricer::BatchPricingRequest& batch) {
+    std::vector<PricingResult> results;
+    if (!batch.requests()) return results;
+
+    results.reserve(batch.requests()->size());
+    for (const auto* req : *batch.requests()) {
+        results.push_back({
+            req->request_id()->c_str(),
+            req->alpha(),
+            req->beta(),
+            price(*req)
+        });
+    }
+    return results;
+}
+
 } // namespace range_pricer

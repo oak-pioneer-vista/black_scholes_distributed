@@ -109,5 +109,7 @@ void setup_logger(const std::string& log_file,
     logger->flush_on(spdlog::level::warn);
 
     spdlog::set_default_logger(logger);
-    spdlog::flush_every(std::chrono::seconds(1));
+    // NOTE: Do NOT call spdlog::flush_every() here. It creates a background
+    // thread that does not survive fork(). Each process must call
+    // spdlog::flush_every() explicitly after fork if periodic flushing is needed.
 }
