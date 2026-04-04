@@ -1,127 +1,70 @@
 #include "generated/pricing_request_generated.h"
 #include "logger.h"
 
+#include <gflags/gflags.h>
 #include <zmq.hpp>
 #include <flatbuffers/flatbuffer_builder.h>
 #include <spdlog/spdlog.h>
 
 #include <string>
 #include <cstring>
-#include <cstdlib>
 
-static void usage(const char* prog) {
-    fprintf(stderr,
-        "Usage: %s [options]\n"
-        "\n"
-        "  --id          <string>   request id            (default: req-001)\n"
-        "  --spot        <double>   spot price             (default: 100.0)\n"
-        "  --low         <double>   lower barrier          (default: 95.0)\n"
-        "  --high        <double>   upper barrier          (default: 105.0)\n"
-        "  --vol         <double>   annualised vol         (default: 0.20)\n"
-        "  --rate        <double>   risk-free rate         (default: 0.05)\n"
-        "  --expiry      <double>   time to expiry (yrs)   (default: 1.0)\n"
-        "  --alpha       <double>   alpha                  (default: 0.0)\n"
-        "  --beta        <double>   beta                   (default: 0.0)\n"
-        "  --alpha-min   <double>   alpha lower bound      (default: 0.0)\n"
-        "  --alpha-max   <double>   alpha upper bound      (default: 1.0)\n"
-        "  --alpha-step  <float>    alpha discretization   (default: 0.1)\n"
-        "  --beta-min    <double>   beta lower bound       (default: 0.0)\n"
-        "  --beta-max    <double>   beta upper bound       (default: 1.0)\n"
-        "  --beta-step   <float>    beta discretization    (default: 0.1)\n"
-        "  --hash        <uint64>   request hash           (default: 0)\n"
-        "  --host        <string>   server host            (default: localhost)\n"
-        "  --port        <int>      server port            (default: 5555)\n"
-        "  --log         <file>     log file path          (default: none)\n"
-        "  --help                   show this message\n",
-        prog);
-}
+DEFINE_string(id,         "req-001",   "Request ID");
+DEFINE_double(spot,       100.0,       "Spot price");
+DEFINE_double(low,        95.0,        "Lower barrier");
+DEFINE_double(high,       105.0,       "Upper barrier");
+DEFINE_double(vol,        0.20,        "Annualised volatility");
+DEFINE_double(rate,       0.05,        "Risk-free rate");
+DEFINE_double(expiry,     1.0,         "Time to expiry (years)");
+DEFINE_double(alpha,      0.0,         "Alpha");
+DEFINE_double(beta,       0.0,         "Beta");
+DEFINE_double(alpha_min,  0.0,         "Alpha lower bound");
+DEFINE_double(alpha_max,  1.0,         "Alpha upper bound");
+DEFINE_double(alpha_step, 0.1,         "Alpha discretization step");
+DEFINE_double(beta_min,   0.0,         "Beta lower bound");
+DEFINE_double(beta_max,   1.0,         "Beta upper bound");
+DEFINE_double(beta_step,  0.1,         "Beta discretization step");
+DEFINE_uint64(hash,       0,           "Request hash");
+DEFINE_string(host,       "localhost", "Server host");
+DEFINE_int32 (port,       5555,        "Server port");
+DEFINE_string(log,        "",          "Log file path (empty for console only)");
 
 int main(int argc, char* argv[]) {
-    // defaults
-    std::string id        = "req-001";
-    double spot           = 100.0;
-    double low            = 95.0;
-    double high           = 105.0;
-    double vol            = 0.20;
-    double rate           = 0.05;
-    double expiry         = 1.0;
-    double alpha          = 0.0;
-    double beta           = 0.0;
-    double alpha_min      = 0.0;
-    double alpha_max      = 1.0;
-    float  alpha_step     = 0.1f;
-    double beta_min       = 0.0;
-    double beta_max       = 1.0;
-    float  beta_step      = 0.1f;
-    uint64_t request_hash = 0;
-    std::string host      = "localhost";
-    int    port           = 5555;
-    std::string log_file;
+    gflags::SetUsageMessage("Range pricer client — send a RangePricingRequest to the server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    for (int i = 1; i < argc; ++i) {
-        std::string a = argv[i];
-        auto next = [&]() -> const char* {
-            if (i + 1 >= argc) {
-                spdlog::error("{} requires a value", a);
-                std::exit(1);
-            }
-            return argv[++i];
-        };
-        if      (a == "--help")        { usage(argv[0]); return 0; }
-        else if (a == "--id")          id           = next();
-        else if (a == "--spot")        spot         = std::atof(next());
-        else if (a == "--low")         low          = std::atof(next());
-        else if (a == "--high")        high         = std::atof(next());
-        else if (a == "--vol")         vol          = std::atof(next());
-        else if (a == "--rate")        rate         = std::atof(next());
-        else if (a == "--expiry")      expiry       = std::atof(next());
-        else if (a == "--alpha")       alpha        = std::atof(next());
-        else if (a == "--beta")        beta         = std::atof(next());
-        else if (a == "--alpha-min")   alpha_min    = std::atof(next());
-        else if (a == "--alpha-max")   alpha_max    = std::atof(next());
-        else if (a == "--alpha-step")  alpha_step   = static_cast<float>(std::atof(next()));
-        else if (a == "--beta-min")    beta_min     = std::atof(next());
-        else if (a == "--beta-max")    beta_max     = std::atof(next());
-        else if (a == "--beta-step")   beta_step    = static_cast<float>(std::atof(next()));
-        else if (a == "--hash")        request_hash = std::stoull(next());
-        else if (a == "--host")        host         = next();
-        else if (a == "--port")        port         = std::atoi(next());
-        else if (a == "--log")         log_file     = next();
-        else { spdlog::error("unknown flag: {}", a); usage(argv[0]); return 1; }
-    }
-
-    setup_logger(log_file);
+    setup_logger(FLAGS_log);
 
     // Build RangePricingRequest FlatBuffer
     flatbuffers::FlatBufferBuilder builder(256);
 
-    auto rid = builder.CreateString(id);
+    auto rid = builder.CreateString(FLAGS_id);
 
     RangePricer::PricingRequestBuilder pr(builder);
     pr.add_request_id(rid);
-    pr.add_spot(spot);
-    pr.add_low(low);
-    pr.add_high(high);
-    pr.add_vol(vol);
-    pr.add_rate(rate);
-    pr.add_expiry(expiry);
-    pr.add_alpha(alpha);
-    pr.add_beta(beta);
+    pr.add_spot(FLAGS_spot);
+    pr.add_low(FLAGS_low);
+    pr.add_high(FLAGS_high);
+    pr.add_vol(FLAGS_vol);
+    pr.add_rate(FLAGS_rate);
+    pr.add_expiry(FLAGS_expiry);
+    pr.add_alpha(FLAGS_alpha);
+    pr.add_beta(FLAGS_beta);
     auto pricing_request = pr.Finish();
 
     RangePricer::RangePricingRequestBuilder rpr(builder);
     rpr.add_request(pricing_request);
-    rpr.add_request_hash(request_hash);
-    rpr.add_alpha_min(alpha_min);
-    rpr.add_alpha_max(alpha_max);
-    rpr.add_alpha_step(alpha_step);
-    rpr.add_beta_min(beta_min);
-    rpr.add_beta_max(beta_max);
-    rpr.add_beta_step(beta_step);
+    rpr.add_request_hash(FLAGS_hash);
+    rpr.add_alpha_min(FLAGS_alpha_min);
+    rpr.add_alpha_max(FLAGS_alpha_max);
+    rpr.add_alpha_step(static_cast<float>(FLAGS_alpha_step));
+    rpr.add_beta_min(FLAGS_beta_min);
+    rpr.add_beta_max(FLAGS_beta_max);
+    rpr.add_beta_step(static_cast<float>(FLAGS_beta_step));
     builder.Finish(rpr.Finish());
 
-    std::string endpoint = "tcp://" + host + ":" + std::to_string(port);
-    spdlog::info("sending RangePricingRequest id={} hash={} to {}", id, request_hash, endpoint);
+    std::string endpoint = "tcp://" + FLAGS_host + ":" + std::to_string(FLAGS_port);
+    spdlog::info("sending RangePricingRequest id={} hash={} to {}", FLAGS_id, FLAGS_hash, endpoint);
 
     zmq::context_t ctx{1};
     zmq::socket_t  sock{ctx, zmq::socket_type::req};

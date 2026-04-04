@@ -15,11 +15,5 @@ struct Config {
     bool        log_cpu    = true;   // include processor/CPU ID
 };
 
-// Parse a key=value config file into cfg (ignores unknown keys).
-void parse_config_file(const std::string& path, Config& cfg);
-
-// Apply command-line overrides on top of cfg.
-// Returns false and prints usage if args are invalid.
-bool parse_args(int argc, char* argv[], Config& cfg);
-
-void print_usage(const char* prog);
+// Populate cfg from gflags FLAGS_* values (call after gflags::ParseCommandLineFlags).
+Config config_from_flags();

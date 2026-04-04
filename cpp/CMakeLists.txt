@@ -51,6 +51,9 @@ target_link_libraries(range_pricer_lib PUBLIC flatbuffers_headers)
 
 find_package(Threads REQUIRED)
 
+# gflags — command-line flag parsing
+find_package(gflags REQUIRED)
+
 # Server — multi-process / multi-thread ZMQ ROUTER-DEALER broker
 add_executable(range_pricer_server
     src/main.cpp
@@ -58,11 +61,11 @@ add_executable(range_pricer_server
     src/config.cpp
     src/logger.cpp
 )
-target_link_libraries(range_pricer_server PRIVATE range_pricer_lib cppzmq Threads::Threads)
+target_link_libraries(range_pricer_server PRIVATE range_pricer_lib cppzmq Threads::Threads gflags)
 
 # Client — CLI utility to send a PricingRequest and print the PV
 add_executable(range_pricer_client
     src/client.cpp
     src/logger.cpp
 )
-target_link_libraries(range_pricer_client PRIVATE range_pricer_lib cppzmq)
+target_link_libraries(range_pricer_client PRIVATE range_pricer_lib cppzmq gflags)

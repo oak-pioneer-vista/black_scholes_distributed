@@ -2,6 +2,7 @@
 #include "logger.h"
 #include "worker.h"
 
+#include <gflags/gflags.h>
 #include <zmq.hpp>
 #include <spdlog/spdlog.h>
 
@@ -54,8 +55,10 @@ static void run_broker(const Config& cfg) {
 int main(int argc, char* argv[]) {
     setup_logger("");
 
-    Config cfg;
-    if (!parse_args(argc, argv, cfg)) return 1;
+    gflags::SetUsageMessage("Range pricer server — multi-process ZMQ ROUTER-DEALER broker");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    Config cfg = config_from_flags();
 
     setup_logger(cfg.log_file, cfg.log_utc, cfg.log_tid, cfg.log_cpu);
 
