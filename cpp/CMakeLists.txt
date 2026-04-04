@@ -49,14 +49,19 @@ target_include_directories(range_pricer_lib PUBLIC
 
 target_link_libraries(range_pricer_lib PUBLIC flatbuffers_headers)
 
-# Server — receives PricingRequest FlatBuffers over ZMQ REP socket
+find_package(Threads REQUIRED)
+
+# Server — multi-process / multi-thread ZMQ ROUTER-DEALER broker
 add_executable(range_pricer
     src/main.cpp
+    src/config.cpp
+    src/logger.cpp
 )
-target_link_libraries(range_pricer PRIVATE range_pricer_lib cppzmq)
+target_link_libraries(range_pricer PRIVATE range_pricer_lib cppzmq Threads::Threads)
 
 # Client — CLI utility to send a PricingRequest and print the PV
 add_executable(range_pricer_client
     src/client.cpp
+    src/logger.cpp
 )
 target_link_libraries(range_pricer_client PRIVATE range_pricer_lib cppzmq)
