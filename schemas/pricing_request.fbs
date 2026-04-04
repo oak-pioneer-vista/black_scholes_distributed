@@ -11,6 +11,28 @@ table PricingRequest {
     vol:        double;
     rate:       double;
     expiry:     double;
+    alpha:      double;   // model parameter alpha
+    beta:       double;   // model parameter beta
 }
 
-root_type PricingRequest;
+// RangePricingRequest embeds a PricingRequest (including alpha/beta) and adds
+// search bounds and discretization steps for alpha and beta.
+table RangePricingRequest {
+    request:      PricingRequest (required);
+    request_hash: uint64;
+
+    alpha_min:  double;   // lower bound for alpha
+    alpha_max:  double;   // upper bound for alpha
+    alpha_step: float;    // discretization step for alpha
+
+    beta_min:   double;   // lower bound for beta
+    beta_max:   double;   // upper bound for beta
+    beta_step:  float;    // discretization step for beta
+}
+
+table BatchPricingRequest {
+    batch_counter_id: uint64;
+    requests:         [PricingRequest] (required);
+}
+
+root_type RangePricingRequest;

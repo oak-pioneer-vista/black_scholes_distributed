@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 #include <chrono>
-#include <ctime>
 #include <cstdio>
 #include <cstring>
 
@@ -17,7 +16,7 @@
 #endif
 
 // ── custom flag: UTC timestamp (%*) ─────────────────────────────────────────
-// Formats msg.time as "YYYY-MM-DD HH:MM:SS.mmm UTC"
+// Formats msg.time as epoch seconds with millisecond precision: "1712234521.042"
 
 class utc_time_formatter final : public spdlog::custom_flag_formatter {
 public:
@@ -26,19 +25,11 @@ public:
                 spdlog::memory_buf_t& dest) override {
         using namespace std::chrono;
         auto total_ms = duration_cast<milliseconds>(msg.time.time_since_epoch()).count();
-        std::time_t t = static_cast<std::time_t>(total_ms / 1000);
-        long long   ms = total_ms % 1000;
+        long long secs = total_ms / 1000;
+        long long ms   = total_ms % 1000;
 
-        std::tm utc{};
-#ifdef _WIN32
-        gmtime_s(&utc, &t);
-#else
-        gmtime_r(&t, &utc);
-#endif
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d.%03lld UTC",
-            utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
-            utc.tm_hour, utc.tm_min, utc.tm_sec, ms);
+        char buf[24];
+        std::snprintf(buf, sizeof(buf), "%lld.%03lld", secs, ms);
         dest.append(buf, buf + std::strlen(buf));
     }
 

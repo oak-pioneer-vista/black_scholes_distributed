@@ -18,6 +18,12 @@ namespace RangePricer {
 struct PricingRequest;
 struct PricingRequestBuilder;
 
+struct RangePricingRequest;
+struct RangePricingRequestBuilder;
+
+struct BatchPricingRequest;
+struct BatchPricingRequestBuilder;
+
 struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PricingRequestBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -27,7 +33,9 @@ struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_HIGH = 10,
     VT_VOL = 12,
     VT_RATE = 14,
-    VT_EXPIRY = 16
+    VT_EXPIRY = 16,
+    VT_ALPHA = 18,
+    VT_BETA = 20
   };
   const ::flatbuffers::String *request_id() const {
     return GetPointer<const ::flatbuffers::String *>(VT_REQUEST_ID);
@@ -50,6 +58,12 @@ struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   double expiry() const {
     return GetField<double>(VT_EXPIRY, 0.0);
   }
+  double alpha() const {
+    return GetField<double>(VT_ALPHA, 0.0);
+  }
+  double beta() const {
+    return GetField<double>(VT_BETA, 0.0);
+  }
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -61,6 +75,8 @@ struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
            VerifyField<double>(verifier, VT_VOL, 8) &&
            VerifyField<double>(verifier, VT_RATE, 8) &&
            VerifyField<double>(verifier, VT_EXPIRY, 8) &&
+           VerifyField<double>(verifier, VT_ALPHA, 8) &&
+           VerifyField<double>(verifier, VT_BETA, 8) &&
            verifier.EndTable();
   }
 };
@@ -90,6 +106,12 @@ struct PricingRequestBuilder {
   void add_expiry(double expiry) {
     fbb_.AddElement<double>(PricingRequest::VT_EXPIRY, expiry, 0.0);
   }
+  void add_alpha(double alpha) {
+    fbb_.AddElement<double>(PricingRequest::VT_ALPHA, alpha, 0.0);
+  }
+  void add_beta(double beta) {
+    fbb_.AddElement<double>(PricingRequest::VT_BETA, beta, 0.0);
+  }
   explicit PricingRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -110,8 +132,12 @@ inline ::flatbuffers::Offset<PricingRequest> CreatePricingRequest(
     double high = 0.0,
     double vol = 0.0,
     double rate = 0.0,
-    double expiry = 0.0) {
+    double expiry = 0.0,
+    double alpha = 0.0,
+    double beta = 0.0) {
   PricingRequestBuilder builder_(_fbb);
+  builder_.add_beta(beta);
+  builder_.add_alpha(alpha);
   builder_.add_expiry(expiry);
   builder_.add_rate(rate);
   builder_.add_vol(vol);
@@ -130,7 +156,9 @@ inline ::flatbuffers::Offset<PricingRequest> CreatePricingRequestDirect(
     double high = 0.0,
     double vol = 0.0,
     double rate = 0.0,
-    double expiry = 0.0) {
+    double expiry = 0.0,
+    double alpha = 0.0,
+    double beta = 0.0) {
   auto request_id__ = request_id ? _fbb.CreateString(request_id) : 0;
   return RangePricer::CreatePricingRequest(
       _fbb,
@@ -140,38 +168,220 @@ inline ::flatbuffers::Offset<PricingRequest> CreatePricingRequestDirect(
       high,
       vol,
       rate,
-      expiry);
+      expiry,
+      alpha,
+      beta);
 }
 
-inline const RangePricer::PricingRequest *GetPricingRequest(const void *buf) {
-  return ::flatbuffers::GetRoot<RangePricer::PricingRequest>(buf);
+struct RangePricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef RangePricingRequestBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_REQUEST = 4,
+    VT_REQUEST_HASH = 6,
+    VT_ALPHA_MIN = 8,
+    VT_ALPHA_MAX = 10,
+    VT_ALPHA_STEP = 12,
+    VT_BETA_MIN = 14,
+    VT_BETA_MAX = 16,
+    VT_BETA_STEP = 18
+  };
+  const RangePricer::PricingRequest *request() const {
+    return GetPointer<const RangePricer::PricingRequest *>(VT_REQUEST);
+  }
+  uint64_t request_hash() const {
+    return GetField<uint64_t>(VT_REQUEST_HASH, 0);
+  }
+  double alpha_min() const {
+    return GetField<double>(VT_ALPHA_MIN, 0.0);
+  }
+  double alpha_max() const {
+    return GetField<double>(VT_ALPHA_MAX, 0.0);
+  }
+  float alpha_step() const {
+    return GetField<float>(VT_ALPHA_STEP, 0.0f);
+  }
+  double beta_min() const {
+    return GetField<double>(VT_BETA_MIN, 0.0);
+  }
+  double beta_max() const {
+    return GetField<double>(VT_BETA_MAX, 0.0);
+  }
+  float beta_step() const {
+    return GetField<float>(VT_BETA_STEP, 0.0f);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffsetRequired(verifier, VT_REQUEST) &&
+           verifier.VerifyTable(request()) &&
+           VerifyField<uint64_t>(verifier, VT_REQUEST_HASH, 8) &&
+           VerifyField<double>(verifier, VT_ALPHA_MIN, 8) &&
+           VerifyField<double>(verifier, VT_ALPHA_MAX, 8) &&
+           VerifyField<float>(verifier, VT_ALPHA_STEP, 4) &&
+           VerifyField<double>(verifier, VT_BETA_MIN, 8) &&
+           VerifyField<double>(verifier, VT_BETA_MAX, 8) &&
+           VerifyField<float>(verifier, VT_BETA_STEP, 4) &&
+           verifier.EndTable();
+  }
+};
+
+struct RangePricingRequestBuilder {
+  typedef RangePricingRequest Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_request(::flatbuffers::Offset<RangePricer::PricingRequest> request) {
+    fbb_.AddOffset(RangePricingRequest::VT_REQUEST, request);
+  }
+  void add_request_hash(uint64_t request_hash) {
+    fbb_.AddElement<uint64_t>(RangePricingRequest::VT_REQUEST_HASH, request_hash, 0);
+  }
+  void add_alpha_min(double alpha_min) {
+    fbb_.AddElement<double>(RangePricingRequest::VT_ALPHA_MIN, alpha_min, 0.0);
+  }
+  void add_alpha_max(double alpha_max) {
+    fbb_.AddElement<double>(RangePricingRequest::VT_ALPHA_MAX, alpha_max, 0.0);
+  }
+  void add_alpha_step(float alpha_step) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_ALPHA_STEP, alpha_step, 0.0f);
+  }
+  void add_beta_min(double beta_min) {
+    fbb_.AddElement<double>(RangePricingRequest::VT_BETA_MIN, beta_min, 0.0);
+  }
+  void add_beta_max(double beta_max) {
+    fbb_.AddElement<double>(RangePricingRequest::VT_BETA_MAX, beta_max, 0.0);
+  }
+  void add_beta_step(float beta_step) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_BETA_STEP, beta_step, 0.0f);
+  }
+  explicit RangePricingRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<RangePricingRequest> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<RangePricingRequest>(end);
+    fbb_.Required(o, RangePricingRequest::VT_REQUEST);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<RangePricingRequest> CreateRangePricingRequest(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<RangePricer::PricingRequest> request = 0,
+    uint64_t request_hash = 0,
+    double alpha_min = 0.0,
+    double alpha_max = 0.0,
+    float alpha_step = 0.0f,
+    double beta_min = 0.0,
+    double beta_max = 0.0,
+    float beta_step = 0.0f) {
+  RangePricingRequestBuilder builder_(_fbb);
+  builder_.add_beta_max(beta_max);
+  builder_.add_beta_min(beta_min);
+  builder_.add_alpha_max(alpha_max);
+  builder_.add_alpha_min(alpha_min);
+  builder_.add_request_hash(request_hash);
+  builder_.add_beta_step(beta_step);
+  builder_.add_alpha_step(alpha_step);
+  builder_.add_request(request);
+  return builder_.Finish();
 }
 
-inline const RangePricer::PricingRequest *GetSizePrefixedPricingRequest(const void *buf) {
-  return ::flatbuffers::GetSizePrefixedRoot<RangePricer::PricingRequest>(buf);
+struct BatchPricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef BatchPricingRequestBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_BATCH_COUNTER_ID = 4,
+    VT_REQUESTS = 6
+  };
+  uint64_t batch_counter_id() const {
+    return GetField<uint64_t>(VT_BATCH_COUNTER_ID, 0);
+  }
+  const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingRequest>> *requests() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingRequest>> *>(VT_REQUESTS);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint64_t>(verifier, VT_BATCH_COUNTER_ID, 8) &&
+           VerifyOffsetRequired(verifier, VT_REQUESTS) &&
+           verifier.VerifyVector(requests()) &&
+           verifier.VerifyVectorOfTables(requests()) &&
+           verifier.EndTable();
+  }
+};
+
+struct BatchPricingRequestBuilder {
+  typedef BatchPricingRequest Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_batch_counter_id(uint64_t batch_counter_id) {
+    fbb_.AddElement<uint64_t>(BatchPricingRequest::VT_BATCH_COUNTER_ID, batch_counter_id, 0);
+  }
+  void add_requests(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingRequest>>> requests) {
+    fbb_.AddOffset(BatchPricingRequest::VT_REQUESTS, requests);
+  }
+  explicit BatchPricingRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<BatchPricingRequest> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<BatchPricingRequest>(end);
+    fbb_.Required(o, BatchPricingRequest::VT_REQUESTS);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<BatchPricingRequest> CreateBatchPricingRequest(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t batch_counter_id = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingRequest>>> requests = 0) {
+  BatchPricingRequestBuilder builder_(_fbb);
+  builder_.add_batch_counter_id(batch_counter_id);
+  builder_.add_requests(requests);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<BatchPricingRequest> CreateBatchPricingRequestDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t batch_counter_id = 0,
+    const std::vector<::flatbuffers::Offset<RangePricer::PricingRequest>> *requests = nullptr) {
+  auto requests__ = requests ? _fbb.CreateVector<::flatbuffers::Offset<RangePricer::PricingRequest>>(*requests) : 0;
+  return RangePricer::CreateBatchPricingRequest(
+      _fbb,
+      batch_counter_id,
+      requests__);
+}
+
+inline const RangePricer::RangePricingRequest *GetRangePricingRequest(const void *buf) {
+  return ::flatbuffers::GetRoot<RangePricer::RangePricingRequest>(buf);
+}
+
+inline const RangePricer::RangePricingRequest *GetSizePrefixedRangePricingRequest(const void *buf) {
+  return ::flatbuffers::GetSizePrefixedRoot<RangePricer::RangePricingRequest>(buf);
 }
 
 template <bool B = false>
-inline bool VerifyPricingRequestBuffer(
+inline bool VerifyRangePricingRequestBuffer(
     ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifyBuffer<RangePricer::PricingRequest>(nullptr);
+  return verifier.template VerifyBuffer<RangePricer::RangePricingRequest>(nullptr);
 }
 
 template <bool B = false>
-inline bool VerifySizePrefixedPricingRequestBuffer(
+inline bool VerifySizePrefixedRangePricingRequestBuffer(
     ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifySizePrefixedBuffer<RangePricer::PricingRequest>(nullptr);
+  return verifier.template VerifySizePrefixedBuffer<RangePricer::RangePricingRequest>(nullptr);
 }
 
-inline void FinishPricingRequestBuffer(
+inline void FinishRangePricingRequestBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
-    ::flatbuffers::Offset<RangePricer::PricingRequest> root) {
+    ::flatbuffers::Offset<RangePricer::RangePricingRequest> root) {
   fbb.Finish(root);
 }
 
-inline void FinishSizePrefixedPricingRequestBuffer(
+inline void FinishSizePrefixedRangePricingRequestBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
-    ::flatbuffers::Offset<RangePricer::PricingRequest> root) {
+    ::flatbuffers::Offset<RangePricer::RangePricingRequest> root) {
   fbb.FinishSizePrefixed(root);
 }
 

@@ -64,23 +64,38 @@ static void worker_thread(zmq::context_t& ctx, const std::string& backend, int t
         const size_t size = msg.size();
 
         flatbuffers::Verifier verifier(data, size);
-        if (!RangePricer::VerifyPricingRequestBuffer(verifier)) {
+        if (!RangePricer::VerifyRangePricingRequestBuffer(verifier)) {
             const char* err = "ERROR: invalid FlatBuffer";
             spdlog::warn("thread {}: received invalid FlatBuffer ({} bytes)", thread_index, size);
             sock.send(zmq::buffer(err, std::strlen(err)), zmq::send_flags::none);
             continue;
         }
 
-        const auto* req = RangePricer::GetPricingRequest(data);
+        const auto* range_req = RangePricer::GetRangePricingRequest(data);
+        const auto* req       = range_req->request();
+
         double pv = range_pricer::price(*req);
 
+        spdlog::info("hash={} id={} spot={:.4f} range=[{:.4f},{:.4f}]"
+                     " alpha={:.4f} beta={:.4f}"
+                     " alpha_bounds=[{:.4f},{:.4f}] step={:.4f}"
+                     " beta_bounds=[{:.4f},{:.4f}] step={:.4f}"
+                     " pv={:.6f}",
+                     range_req->request_hash(),
+                     req->request_id()->c_str(),
+                     req->spot(), req->low(), req->high(),
+                     req->alpha(), req->beta(),
+                     range_req->alpha_min(), range_req->alpha_max(), range_req->alpha_step(),
+                     range_req->beta_min(),  range_req->beta_max(),  range_req->beta_step(),
+                     pv);
+
         std::string reply =
-            "id="      + std::string(req->request_id()->c_str()) +
+            "hash="    + std::to_string(range_req->request_hash()) +
+            " id="     + std::string(req->request_id()->c_str()) +
             " spot="   + std::to_string(req->spot()) +
             " range=[" + std::to_string(req->low()) + "," + std::to_string(req->high()) + "]" +
             " pv="     + std::to_string(pv);
 
-        spdlog::info("{}", reply);
         sock.send(zmq::buffer(reply), zmq::send_flags::none);
     }
 }
