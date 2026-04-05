@@ -4,12 +4,12 @@
 #include <gflags/gflags.h>
 #include <zmq.hpp>
 #include <flatbuffers/flatbuffer_builder.h>
+#include <flatbuffers/verifier.h>
 #include <spdlog/spdlog.h>
 
 #include <string>
 #include <cstring>
 
-DEFINE_string(id,         "req-001",   "Request ID");
 DEFINE_double(spot,       100.0,       "Spot price");
 DEFINE_double(low,        95.0,        "Lower barrier");
 DEFINE_double(high,       105.0,       "Upper barrier");
@@ -38,10 +38,7 @@ int main(int argc, char* argv[]) {
     // Build RangePricingRequest FlatBuffer
     flatbuffers::FlatBufferBuilder builder(256);
 
-    auto rid = builder.CreateString(FLAGS_id);
-
     RangePricer::PricingRequestBuilder pr(builder);
-    pr.add_request_id(rid);
     pr.add_spot(FLAGS_spot);
     pr.add_low(FLAGS_low);
     pr.add_high(FLAGS_high);
@@ -64,7 +61,7 @@ int main(int argc, char* argv[]) {
     builder.Finish(rpr.Finish());
 
     std::string endpoint = "tcp://" + FLAGS_host + ":" + std::to_string(FLAGS_port);
-    spdlog::info("sending RangePricingRequest id={} hash={} to {}", FLAGS_id, FLAGS_hash, endpoint);
+    spdlog::info("sending RangePricingRequest hash={} to {}", FLAGS_hash, endpoint);
 
     zmq::context_t ctx{1};
     zmq::socket_t  sock{ctx, zmq::socket_type::req};
@@ -76,7 +73,15 @@ int main(int argc, char* argv[]) {
     zmq::message_t reply;
     [[maybe_unused]] auto _ = sock.recv(reply, zmq::recv_flags::none);
 
+    flatbuffers::Verifier verifier(static_cast<const uint8_t*>(reply.data()), reply.size());
     const auto* batch_response = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(reply.data());
+    if (!batch_response->Verify(verifier)) {
+        std::string raw(static_cast<char*>(reply.data()), reply.size());
+        spdlog::error("invalid response ({} bytes): {}", reply.size(), raw);
+        spdlog::shutdown();
+        return 1;
+    }
+
     spdlog::info("batch_id={}", batch_response->batch_id());
     if (batch_response->results()) {
         for (const auto* r : *batch_response->results()) {

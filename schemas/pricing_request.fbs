@@ -4,7 +4,6 @@
 namespace RangePricer;
 
 table PricingRequest {
-    request_id: string (required);
     spot:       double;
     low:        double;
     high:       double;
@@ -30,9 +29,15 @@ table RangePricingRequest {
     beta_step:  float;    // discretization step for beta
 }
 
+struct AlphaBetaPair {
+    alpha: double;
+    beta:  double;
+}
+
 table BatchPricingRequest {
     batch_counter_id: uint64;
-    requests:         [PricingRequest] (required);
+    request:          PricingRequest (required);
+    pairs:            [AlphaBetaPair] (required);
 }
 
 table PricingResponse {

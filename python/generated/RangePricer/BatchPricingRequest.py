@@ -32,12 +32,10 @@ class BatchPricingRequest(object):
         return 0
 
     # BatchPricingRequest
-    def Requests(self, j):
+    def Request(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            x = self._tab.Vector(o)
-            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
-            x = self._tab.Indirect(x)
+            x = self._tab.Indirect(o + self._tab.Pos)
             from RangePricer.PricingRequest import PricingRequest
             obj = PricingRequest()
             obj.Init(self._tab.Bytes, x)
@@ -45,19 +43,31 @@ class BatchPricingRequest(object):
         return None
 
     # BatchPricingRequest
-    def RequestsLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+    def Pairs(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 16
+            from RangePricer.AlphaBetaPair import AlphaBetaPair
+            obj = AlphaBetaPair()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
+    # BatchPricingRequest
+    def PairsLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # BatchPricingRequest
-    def RequestsIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+    def PairsIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         return o == 0
 
 def BatchPricingRequestStart(builder):
-    builder.StartObject(2)
+    builder.StartObject(3)
 
 def Start(builder):
     BatchPricingRequestStart(builder)
@@ -68,17 +78,23 @@ def BatchPricingRequestAddBatchCounterId(builder, batchCounterId):
 def AddBatchCounterId(builder, batchCounterId):
     BatchPricingRequestAddBatchCounterId(builder, batchCounterId)
 
-def BatchPricingRequestAddRequests(builder, requests):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(requests), 0)
+def BatchPricingRequestAddRequest(builder, request):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(request), 0)
 
-def AddRequests(builder, requests):
-    BatchPricingRequestAddRequests(builder, requests)
+def AddRequest(builder, request):
+    BatchPricingRequestAddRequest(builder, request)
 
-def BatchPricingRequestStartRequestsVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
+def BatchPricingRequestAddPairs(builder, pairs):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(pairs), 0)
 
-def StartRequestsVector(builder, numElems):
-    return BatchPricingRequestStartRequestsVector(builder, numElems)
+def AddPairs(builder, pairs):
+    BatchPricingRequestAddPairs(builder, pairs)
+
+def BatchPricingRequestStartPairsVector(builder, numElems):
+    return builder.StartVector(16, numElems, 8)
+
+def StartPairsVector(builder, numElems):
+    return BatchPricingRequestStartPairsVector(builder, numElems)
 
 def BatchPricingRequestEnd(builder):
     return builder.EndObject()

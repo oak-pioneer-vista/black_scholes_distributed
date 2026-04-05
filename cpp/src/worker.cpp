@@ -87,28 +87,28 @@ expand_to_batches(const RangePricer::RangePricingRequest* rr, int n_threads) {
 
         flatbuffers::FlatBufferBuilder builder(512);
 
-        std::vector<flatbuffers::Offset<RangePricer::PricingRequest>> reqs;
-        reqs.reserve(end - start);
+        std::vector<RangePricer::AlphaBetaPair> pairs;
+        pairs.reserve(end - start);
+        for (int i = start; i < end; ++i)
+            pairs.push_back({grid[i].alpha, grid[i].beta});
 
-        for (int i = start; i < end; ++i) {
-            auto rid = builder.CreateString(base->request_id()->c_str());
-            RangePricer::PricingRequestBuilder pr(builder);
-            pr.add_request_id(rid);
-            pr.add_spot(base->spot());
-            pr.add_low(base->low());
-            pr.add_high(base->high());
-            pr.add_vol(base->vol());
-            pr.add_rate(base->rate());
-            pr.add_expiry(base->expiry());
-            pr.add_alpha(grid[i].alpha);
-            pr.add_beta(grid[i].beta);
-            reqs.push_back(pr.Finish());
-        }
+        auto pairs_vec = builder.CreateVectorOfStructs(pairs);
 
-        auto requests_vec = builder.CreateVector(reqs);
+        RangePricer::PricingRequestBuilder pr(builder);
+        pr.add_spot(base->spot());
+        pr.add_low(base->low());
+        pr.add_high(base->high());
+        pr.add_vol(base->vol());
+        pr.add_rate(base->rate());
+        pr.add_expiry(base->expiry());
+        pr.add_alpha(base->alpha());
+        pr.add_beta(base->beta());
+        auto request = pr.Finish();
+
         RangePricer::BatchPricingRequestBuilder br(builder);
         br.add_batch_counter_id(rr->request_hash() * 1000 + c);
-        br.add_requests(requests_vec);
+        br.add_request(request);
+        br.add_pairs(pairs_vec);
         builder.Finish(br.Finish());
 
         auto* buf = builder.GetBufferPointer();
@@ -143,13 +143,20 @@ static void worker_thread(zmq::context_t& ctx, int thread_index) {
 
             flatbuffers::Verifier verifier(data, size);
             auto* batch = flatbuffers::GetRoot<RangePricer::BatchPricingRequest>(data);
-            if (!batch->Verify(verifier) || !batch->requests()) {
+            if (!batch->Verify(verifier) || !batch->request() || !batch->pairs()) {
                 spdlog::warn("thread {}: invalid BatchPricingRequest, skipping", thread_index);
                 push.send(zmq::buffer(std::string{}), zmq::send_flags::none);
                 continue;
             }
 
-            auto result_buf = range_pricer::price_batch(*batch);
+            std::vector<uint8_t> result_buf;
+            try {
+                result_buf = range_pricer::price_batch(*batch);
+            } catch (const std::exception& e) {
+                spdlog::error("thread {}: pricing failed: {}", thread_index, e.what());
+                push.send(zmq::buffer(std::string{}), zmq::send_flags::none);
+                continue;
+            }
 
             const auto* batch_response = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_buf.data());
             if (batch_response->results()) {
@@ -225,15 +232,16 @@ void run_worker_process(const Config& cfg) {
             flatbuffers::Verifier verifier(data, size);
             if (!RangePricer::VerifyRangePricingRequestBuffer(verifier)) {
                 spdlog::warn("process {}: invalid RangePricingRequest ({} bytes)", getpid(), size);
-                const char* err = "ERROR: invalid RangePricingRequest";
-                broker.send(zmq::buffer(err, std::strlen(err)), zmq::send_flags::none);
+                flatbuffers::FlatBufferBuilder err_builder(64);
+                err_builder.Finish(RangePricer::CreateBatchPricingResponse(err_builder));
+                broker.send(zmq::buffer(err_builder.GetBufferPointer(), err_builder.GetSize()),
+                            zmq::send_flags::none);
                 continue;
             }
 
             const auto* rr = RangePricer::GetRangePricingRequest(data);
-            spdlog::info("process={} hash={} id={} alpha=[{:.3f},{:.3f}] beta=[{:.3f},{:.3f}]",
+            spdlog::info("process={} hash={} alpha=[{:.3f},{:.3f}] beta=[{:.3f},{:.3f}]",
                          getpid(), rr->request_hash(),
-                         rr->request()->request_id()->c_str(),
                          rr->alpha_min(), rr->alpha_max(),
                          rr->beta_min(),  rr->beta_max());
 
@@ -251,13 +259,16 @@ void run_worker_process(const Config& cfg) {
                 auto res = results.recv(result_msg, zmq::recv_flags::none);
                 if (!res) continue;
 
+                if (result_msg.size() == 0) continue;
+
+                flatbuffers::Verifier v(static_cast<const uint8_t*>(result_msg.data()), result_msg.size());
                 const auto* br = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_msg.data());
-                if (br->results()) {
-                    for (const auto* r : *br->results()) {
-                        all_results.push_back(RangePricer::CreatePricingResponse(
-                            reply_builder,
-                            r->alpha(), r->beta(), r->price(), r->hedge_ratio()));
-                    }
+                if (!br->Verify(v) || !br->results()) continue;
+
+                for (const auto* r : *br->results()) {
+                    all_results.push_back(RangePricer::CreatePricingResponse(
+                        reply_builder,
+                        r->alpha(), r->beta(), r->price(), r->hedge_ratio()));
                 }
             }
 

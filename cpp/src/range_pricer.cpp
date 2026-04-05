@@ -39,19 +39,21 @@ std::pair<double, double> price(const RangePricer::PricingRequest& req) {
 std::vector<uint8_t> price_batch(const RangePricer::BatchPricingRequest& batch) {
     flatbuffers::FlatBufferBuilder builder(512);
 
+    const auto* req   = batch.request();
+    const auto* pairs = batch.pairs();
+
+    auto [base_pv, base_hr] = price(*req);
+
     std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> result_offsets;
-    if (batch.requests()) {
-        result_offsets.reserve(batch.requests()->size());
-        for (const auto* req : *batch.requests()) {
-            auto [pv, hr] = price(*req);
-            result_offsets.push_back(RangePricer::CreatePricingResponse(
-                builder,
-                req->alpha(),
-                req->beta(),
-                pv,
-                hr
-            ));
-        }
+    result_offsets.reserve(pairs->size());
+    for (const auto* ab : *pairs) {
+        result_offsets.push_back(RangePricer::CreatePricingResponse(
+            builder,
+            ab->alpha(),
+            ab->beta(),
+            base_pv,
+            base_hr
+        ));
     }
 
     auto results_vec = builder.CreateVector(result_offsets);

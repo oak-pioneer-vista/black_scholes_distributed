@@ -25,124 +25,111 @@ class PricingRequest(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # PricingRequest
-    def RequestId(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        if o != 0:
-            return self._tab.String(o + self._tab.Pos)
-        return None
-
-    # PricingRequest
     def Spot(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Low(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def High(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Vol(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Rate(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Expiry(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Alpha(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingRequest
     def Beta(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
 def PricingRequestStart(builder):
-    builder.StartObject(9)
+    builder.StartObject(8)
 
 def Start(builder):
     PricingRequestStart(builder)
 
-def PricingRequestAddRequestId(builder, requestId):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(requestId), 0)
-
-def AddRequestId(builder, requestId):
-    PricingRequestAddRequestId(builder, requestId)
-
 def PricingRequestAddSpot(builder, spot):
-    builder.PrependFloat64Slot(1, spot, 0.0)
+    builder.PrependFloat64Slot(0, spot, 0.0)
 
 def AddSpot(builder, spot):
     PricingRequestAddSpot(builder, spot)
 
 def PricingRequestAddLow(builder, low):
-    builder.PrependFloat64Slot(2, low, 0.0)
+    builder.PrependFloat64Slot(1, low, 0.0)
 
 def AddLow(builder, low):
     PricingRequestAddLow(builder, low)
 
 def PricingRequestAddHigh(builder, high):
-    builder.PrependFloat64Slot(3, high, 0.0)
+    builder.PrependFloat64Slot(2, high, 0.0)
 
 def AddHigh(builder, high):
     PricingRequestAddHigh(builder, high)
 
 def PricingRequestAddVol(builder, vol):
-    builder.PrependFloat64Slot(4, vol, 0.0)
+    builder.PrependFloat64Slot(3, vol, 0.0)
 
 def AddVol(builder, vol):
     PricingRequestAddVol(builder, vol)
 
 def PricingRequestAddRate(builder, rate):
-    builder.PrependFloat64Slot(5, rate, 0.0)
+    builder.PrependFloat64Slot(4, rate, 0.0)
 
 def AddRate(builder, rate):
     PricingRequestAddRate(builder, rate)
 
 def PricingRequestAddExpiry(builder, expiry):
-    builder.PrependFloat64Slot(6, expiry, 0.0)
+    builder.PrependFloat64Slot(5, expiry, 0.0)
 
 def AddExpiry(builder, expiry):
     PricingRequestAddExpiry(builder, expiry)
 
 def PricingRequestAddAlpha(builder, alpha):
-    builder.PrependFloat64Slot(7, alpha, 0.0)
+    builder.PrependFloat64Slot(6, alpha, 0.0)
 
 def AddAlpha(builder, alpha):
     PricingRequestAddAlpha(builder, alpha)
 
 def PricingRequestAddBeta(builder, beta):
-    builder.PrependFloat64Slot(8, beta, 0.0)
+    builder.PrependFloat64Slot(7, beta, 0.0)
 
 def AddBeta(builder, beta):
     PricingRequestAddBeta(builder, beta)
