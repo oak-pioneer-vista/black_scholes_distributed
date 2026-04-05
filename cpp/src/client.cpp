@@ -111,8 +111,8 @@ int main(int argc, char* argv[]) {
     spdlog::info("request_hash={}", range_response->request_hash());
     if (range_response->results()) {
         for (const auto* r : *range_response->results()) {
-            spdlog::info("alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
-                         r->alpha(), r->beta(), r->price(), r->hedge_ratio());
+            spdlog::info("idx={:05d} alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
+                         r->idx(), r->alpha(), r->beta(), r->price(), r->hedge_ratio());
         }
     }
 

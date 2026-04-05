@@ -131,7 +131,8 @@ static void worker_thread(zmq::context_t& ctx, int thread_index) {
 
             std::vector<uint8_t> result_buf;
             try {
-                result_buf = range_pricer::price_batch(*batch);
+                result_buf = range_pricer::process(
+                    *batch->request(), *batch->pairs(), batch->batch_counter_id());
             } catch (const std::exception& e) {
                 spdlog::error("thread {}: pricing failed: {}", thread_index, e.what());
                 push.send(zmq::buffer(std::string{}), zmq::send_flags::none);
