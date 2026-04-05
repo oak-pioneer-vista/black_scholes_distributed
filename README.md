@@ -2,7 +2,7 @@
 
 High-performance option pricer with SIMD-vectorized Black-Scholes pricing, a multi-threaded C++ server, ZeroMQ transport, and FlatBuffers serialization.
 
-The server prices an alpha x beta parameter grid for a given set of pricing parameters (stock price, strike, rate, time to maturity) using [Google Highway](https://github.com/google/highway) for portable SIMD vectorization. The pricing model is a Black-Scholes stub — the vectorized infrastructure is in place and the model implementation is pending.
+The server prices an alpha * beta parameter grid for a given set of pricing parameters (stock price, strike, rate, time to maturity) using [Google Highway](https://github.com/google/highway) for portable SIMD vectorization. The pricing model is a Black-Scholes stub — the vectorized infrastructure is in place and the model implementation is pending.
 
 ## Architecture
 
