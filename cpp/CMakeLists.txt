@@ -60,11 +60,17 @@ target_include_directories(range_pricer_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/generated
 )
+target_include_directories(range_pricer_lib PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-target_link_libraries(range_pricer_lib PUBLIC flatbuffers_headers)
+target_link_libraries(range_pricer_lib PUBLIC flatbuffers_headers hwy::hwy hwy::hwy_contrib)
 add_dependencies(range_pricer_lib flatbuffers_gen)
 
 find_package(Threads REQUIRED)
+
+# Google Highway — portable SIMD
+find_package(hwy REQUIRED)
 
 # gflags — command-line flag parsing
 find_package(gflags REQUIRED)
