@@ -17,8 +17,8 @@ Client (REQ)
 │  ──► slice into BatchPricingReqs │
 │      (simd_lanes pairs each)     │
 │                                  │
-│  PUSH ──► Thread 0 ──► PULL     │
-│  PUSH ──► Thread 1 ──► PULL     │
+│  PUSH ──► Thread 0 ──► PULL      │
+│  PUSH ──► Thread 1 ──► PULL      │
 │  ...      (pinned to CPU)        │
 │                                  │
 │  Collect + sort by idx           │
