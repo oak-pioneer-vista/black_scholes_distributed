@@ -36,8 +36,8 @@ class BatchPricingRequest(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from RangePricer.PricingRequest import PricingRequest
-            obj = PricingRequest()
+            from RangePricer.PricingParams import PricingParams
+            obj = PricingParams()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
@@ -47,7 +47,7 @@ class BatchPricingRequest(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             x = self._tab.Vector(o)
-            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 16
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 12
             from RangePricer.AlphaBetaPair import AlphaBetaPair
             obj = AlphaBetaPair()
             obj.Init(self._tab.Bytes, x)
@@ -91,7 +91,7 @@ def AddPairs(builder, pairs):
     BatchPricingRequestAddPairs(builder, pairs)
 
 def BatchPricingRequestStartPairsVector(builder, numElems):
-    return builder.StartVector(16, numElems, 8)
+    return builder.StartVector(12, numElems, 4)
 
 def StartPairsVector(builder, numElems):
     return BatchPricingRequestStartPairsVector(builder, numElems)

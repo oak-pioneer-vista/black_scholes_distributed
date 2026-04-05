@@ -25,59 +25,72 @@ class PricingResponse(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # PricingResponse
-    def Alpha(self):
+    def Idx(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+        return 0
+
+    # PricingResponse
+    def Alpha(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingResponse
     def Beta(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingResponse
     def Price(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
     # PricingResponse
     def HedgeRatio(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
 def PricingResponseStart(builder):
-    builder.StartObject(4)
+    builder.StartObject(5)
 
 def Start(builder):
     PricingResponseStart(builder)
 
+def PricingResponseAddIdx(builder, idx):
+    builder.PrependUint32Slot(0, idx, 0)
+
+def AddIdx(builder, idx):
+    PricingResponseAddIdx(builder, idx)
+
 def PricingResponseAddAlpha(builder, alpha):
-    builder.PrependFloat64Slot(0, alpha, 0.0)
+    builder.PrependFloat32Slot(1, alpha, 0.0)
 
 def AddAlpha(builder, alpha):
     PricingResponseAddAlpha(builder, alpha)
 
 def PricingResponseAddBeta(builder, beta):
-    builder.PrependFloat64Slot(1, beta, 0.0)
+    builder.PrependFloat32Slot(2, beta, 0.0)
 
 def AddBeta(builder, beta):
     PricingResponseAddBeta(builder, beta)
 
 def PricingResponseAddPrice(builder, price):
-    builder.PrependFloat64Slot(2, price, 0.0)
+    builder.PrependFloat32Slot(3, price, 0.0)
 
 def AddPrice(builder, price):
     PricingResponseAddPrice(builder, price)
 
 def PricingResponseAddHedgeRatio(builder, hedgeRatio):
-    builder.PrependFloat64Slot(3, hedgeRatio, 0.0)
+    builder.PrependFloat32Slot(4, hedgeRatio, 0.0)
 
 def AddHedgeRatio(builder, hedgeRatio):
     PricingResponseAddHedgeRatio(builder, hedgeRatio)

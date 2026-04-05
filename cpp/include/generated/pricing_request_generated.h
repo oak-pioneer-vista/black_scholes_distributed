@@ -35,6 +35,36 @@ struct BatchPricingResponseBuilder;
 struct RangePricingResponse;
 struct RangePricingResponseBuilder;
 
+enum OptionType : int8_t {
+  OptionType_Call = 0,
+  OptionType_Put = 1,
+  OptionType_MIN = OptionType_Call,
+  OptionType_MAX = OptionType_Put
+};
+
+inline const OptionType (&EnumValuesOptionType())[2] {
+  static const OptionType values[] = {
+    OptionType_Call,
+    OptionType_Put
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesOptionType() {
+  static const char * const names[3] = {
+    "Call",
+    "Put",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameOptionType(OptionType e) {
+  if (::flatbuffers::IsOutRange(e, OptionType_Call, OptionType_Put)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesOptionType()[index];
+}
+
 FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) AlphaBetaPair FLATBUFFERS_FINAL_CLASS {
  private:
   uint32_t idx_;
@@ -67,12 +97,16 @@ FLATBUFFERS_STRUCT_END(AlphaBetaPair, 12);
 struct PricingParams FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PricingParamsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_STOCK_PRICE = 4,
-    VT_STRIKE_PRICE = 6,
-    VT_INTEREST_RATE = 8,
-    VT_TIME_TO_MATURITY = 10,
-    VT_STOCK_DISCRETIZATION = 12
+    VT_OPTION_TYPE = 4,
+    VT_STOCK_PRICE = 6,
+    VT_STRIKE_PRICE = 8,
+    VT_INTEREST_RATE = 10,
+    VT_TIME_TO_MATURITY = 12,
+    VT_STOCK_DISCRETIZATION = 14
   };
+  RangePricer::OptionType option_type() const {
+    return static_cast<RangePricer::OptionType>(GetField<int8_t>(VT_OPTION_TYPE, 0));
+  }
   float stock_price() const {
     return GetField<float>(VT_STOCK_PRICE, 0.0f);
   }
@@ -91,6 +125,7 @@ struct PricingParams FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
     return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_OPTION_TYPE, 1) &&
            VerifyField<float>(verifier, VT_STOCK_PRICE, 4) &&
            VerifyField<float>(verifier, VT_STRIKE_PRICE, 4) &&
            VerifyField<float>(verifier, VT_INTEREST_RATE, 4) &&
@@ -104,6 +139,9 @@ struct PricingParamsBuilder {
   typedef PricingParams Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
+  void add_option_type(RangePricer::OptionType option_type) {
+    fbb_.AddElement<int8_t>(PricingParams::VT_OPTION_TYPE, static_cast<int8_t>(option_type), 0);
+  }
   void add_stock_price(float stock_price) {
     fbb_.AddElement<float>(PricingParams::VT_STOCK_PRICE, stock_price, 0.0f);
   }
@@ -132,6 +170,7 @@ struct PricingParamsBuilder {
 
 inline ::flatbuffers::Offset<PricingParams> CreatePricingParams(
     ::flatbuffers::FlatBufferBuilder &_fbb,
+    RangePricer::OptionType option_type = RangePricer::OptionType_Call,
     float stock_price = 0.0f,
     float strike_price = 0.0f,
     float interest_rate = 0.0f,
@@ -143,6 +182,7 @@ inline ::flatbuffers::Offset<PricingParams> CreatePricingParams(
   builder_.add_interest_rate(interest_rate);
   builder_.add_strike_price(strike_price);
   builder_.add_stock_price(stock_price);
+  builder_.add_option_type(option_type);
   return builder_.Finish();
 }
 

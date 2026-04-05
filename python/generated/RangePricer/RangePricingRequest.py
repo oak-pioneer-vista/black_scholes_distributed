@@ -29,8 +29,8 @@ class RangePricingRequest(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from RangePricer.PricingRequest import PricingRequest
-            obj = PricingRequest()
+            from RangePricer.PricingParams import PricingParams
+            obj = PricingParams()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
@@ -43,49 +43,31 @@ class RangePricingRequest(object):
         return 0
 
     # RangePricingRequest
-    def AlphaMin(self):
+    def Pairs(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 12
+            from RangePricer.AlphaBetaPair import AlphaBetaPair
+            obj = AlphaBetaPair()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
 
     # RangePricingRequest
-    def AlphaMax(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+    def PairsLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
+            return self._tab.VectorLen(o)
+        return 0
 
     # RangePricingRequest
-    def AlphaStep(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
-        return 0.0
-
-    # RangePricingRequest
-    def BetaMin(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
-
-    # RangePricingRequest
-    def BetaMax(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
-
-    # RangePricingRequest
-    def BetaStep(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
-        return 0.0
+    def PairsIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        return o == 0
 
 def RangePricingRequestStart(builder):
-    builder.StartObject(8)
+    builder.StartObject(3)
 
 def Start(builder):
     RangePricingRequestStart(builder)
@@ -102,41 +84,17 @@ def RangePricingRequestAddRequestHash(builder, requestHash):
 def AddRequestHash(builder, requestHash):
     RangePricingRequestAddRequestHash(builder, requestHash)
 
-def RangePricingRequestAddAlphaMin(builder, alphaMin):
-    builder.PrependFloat64Slot(2, alphaMin, 0.0)
+def RangePricingRequestAddPairs(builder, pairs):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(pairs), 0)
 
-def AddAlphaMin(builder, alphaMin):
-    RangePricingRequestAddAlphaMin(builder, alphaMin)
+def AddPairs(builder, pairs):
+    RangePricingRequestAddPairs(builder, pairs)
 
-def RangePricingRequestAddAlphaMax(builder, alphaMax):
-    builder.PrependFloat64Slot(3, alphaMax, 0.0)
+def RangePricingRequestStartPairsVector(builder, numElems):
+    return builder.StartVector(12, numElems, 4)
 
-def AddAlphaMax(builder, alphaMax):
-    RangePricingRequestAddAlphaMax(builder, alphaMax)
-
-def RangePricingRequestAddAlphaStep(builder, alphaStep):
-    builder.PrependFloat32Slot(4, alphaStep, 0.0)
-
-def AddAlphaStep(builder, alphaStep):
-    RangePricingRequestAddAlphaStep(builder, alphaStep)
-
-def RangePricingRequestAddBetaMin(builder, betaMin):
-    builder.PrependFloat64Slot(5, betaMin, 0.0)
-
-def AddBetaMin(builder, betaMin):
-    RangePricingRequestAddBetaMin(builder, betaMin)
-
-def RangePricingRequestAddBetaMax(builder, betaMax):
-    builder.PrependFloat64Slot(6, betaMax, 0.0)
-
-def AddBetaMax(builder, betaMax):
-    RangePricingRequestAddBetaMax(builder, betaMax)
-
-def RangePricingRequestAddBetaStep(builder, betaStep):
-    builder.PrependFloat32Slot(7, betaStep, 0.0)
-
-def AddBetaStep(builder, betaStep):
-    RangePricingRequestAddBetaStep(builder, betaStep)
+def StartPairsVector(builder, numElems):
+    return RangePricingRequestStartPairsVector(builder, numElems)
 
 def RangePricingRequestEnd(builder):
     return builder.EndObject()

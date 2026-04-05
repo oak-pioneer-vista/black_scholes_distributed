@@ -11,19 +11,22 @@ class AlphaBetaPair(object):
 
     @classmethod
     def SizeOf(cls):
-        return 16
+        return 12
 
     # AlphaBetaPair
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # AlphaBetaPair
-    def Alpha(self): return self._tab.Get(flatbuffers.number_types.Float64Flags, self._tab.Pos + flatbuffers.number_types.UOffsetTFlags.py_type(0))
+    def Idx(self): return self._tab.Get(flatbuffers.number_types.Uint32Flags, self._tab.Pos + flatbuffers.number_types.UOffsetTFlags.py_type(0))
     # AlphaBetaPair
-    def Beta(self): return self._tab.Get(flatbuffers.number_types.Float64Flags, self._tab.Pos + flatbuffers.number_types.UOffsetTFlags.py_type(8))
+    def Alpha(self): return self._tab.Get(flatbuffers.number_types.Float32Flags, self._tab.Pos + flatbuffers.number_types.UOffsetTFlags.py_type(4))
+    # AlphaBetaPair
+    def Beta(self): return self._tab.Get(flatbuffers.number_types.Float32Flags, self._tab.Pos + flatbuffers.number_types.UOffsetTFlags.py_type(8))
 
-def CreateAlphaBetaPair(builder, alpha, beta):
-    builder.Prep(8, 16)
-    builder.PrependFloat64(beta)
-    builder.PrependFloat64(alpha)
+def CreateAlphaBetaPair(builder, idx, alpha, beta):
+    builder.Prep(4, 12)
+    builder.PrependFloat32(beta)
+    builder.PrependFloat32(alpha)
+    builder.PrependUint32(idx)
     return builder.Offset()

@@ -2,7 +2,11 @@
 // Compile: flatc --cpp --python -o <out_dir> pricing_request.fbs
 
 namespace RangePricer;
+
+enum OptionType : byte { Call, Put }
+
 table PricingParams {
+    option_type:          OptionType = Call;
     stock_price:          float;
     strike_price:         float;
     interest_rate:        float;
