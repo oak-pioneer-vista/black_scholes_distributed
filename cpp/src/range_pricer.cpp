@@ -7,7 +7,7 @@
 
 namespace range_pricer {
 
-std::pair<float, float> price(const RangePricer::PricingRequest& req) {
+std::pair<float, float> price(const RangePricer::PricingParams& req) {
     float S  = req.stock_price();
     float K  = req.strike_price();
     float r  = req.interest_rate();
@@ -37,6 +37,7 @@ std::vector<uint8_t> price_batch(const RangePricer::BatchPricingRequest& batch) 
     for (const auto* ab : *pairs) {
         result_offsets.push_back(RangePricer::CreatePricingResponse(
             builder,
+            ab->idx(),
             ab->alpha(),
             ab->beta(),
             base_pv,

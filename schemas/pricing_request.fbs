@@ -2,7 +2,7 @@
 // Compile: flatc --cpp --python -o <out_dir> pricing_request.fbs
 
 namespace RangePricer;
-table PricingRequest {
+table PricingParams {
     stock_price:          float;
     strike_price:         float;
     interest_rate:        float;
@@ -10,33 +10,26 @@ table PricingRequest {
     stock_discretization: float;
 }
 
-// RangePricingRequest embeds a PricingRequest (including alpha/beta) and adds
-// search bounds and discretization steps for alpha and beta.
-table RangePricingRequest {
-    request:      PricingRequest (required);
-    request_hash: uint64;
-
-    alpha_min:  float;   // lower bound for alpha
-    alpha_max:  float;   // upper bound for alpha
-    alpha_step: float;    // discretization step for alpha
-
-    beta_min:   float;   // lower bound for beta
-    beta_max:   float;   // upper bound for beta
-    beta_step:  float;    // discretization step for beta
-}
-
 struct AlphaBetaPair {
+    idx:   uint32;
     alpha: float;
     beta:  float;
 }
 
+table RangePricingRequest {
+    request:      PricingParams (required);
+    request_hash: uint64;
+    pairs:        [AlphaBetaPair] (required);
+}
+
 table BatchPricingRequest {
     batch_counter_id: uint64;
-    request:          PricingRequest (required);
+    request:          PricingParams (required);
     pairs:            [AlphaBetaPair] (required);
 }
 
 table PricingResponse {
+    idx:         uint32;
     alpha:       float;
     beta:        float;
     price:       float;
@@ -50,7 +43,7 @@ table BatchPricingResponse {
 
 table RangePricingResponse {
     request_hash: uint64;
-    batches:      [BatchPricingResponse];
+    results:      [PricingResponse];
 }
 
 root_type RangePricingRequest;

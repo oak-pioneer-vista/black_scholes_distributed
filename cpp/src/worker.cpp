@@ -12,6 +12,7 @@
 #include <string>
 #include <cstring>
 #include <thread>
+#include <algorithm>
 #include <vector>
 #include <csignal>
 #include <unistd.h>
@@ -46,34 +47,15 @@ static void set_thread_affinity(int cpu_index) {
 }
 
 // ── batch expansion ───────────────────────────────────────────────────────────
-// Expand a RangePricingRequest into BatchPricingRequest FlatBuffers, each
-// containing at most simd_lanes AlphaBetaPairs.
+// Slice a RangePricingRequest's pairs into BatchPricingRequest FlatBuffers,
+// each containing at most simd_lanes AlphaBetaPairs.
 
 static std::vector<std::vector<uint8_t>>
 expand_to_batches(const RangePricer::RangePricingRequest* rr, int simd_lanes) {
-    const auto* base = rr->request();
+    const auto* base  = rr->request();
+    const auto* pairs = rr->pairs();
 
-    auto grid_values = [](float lo, float hi, float step) {
-        std::vector<float> v;
-        if (step <= 0.f) { v.push_back(lo); return v; }
-        for (float x = lo; x <= hi + 1e-6f; x += step)
-            v.push_back(x);
-        return v;
-    };
-
-    auto alphas = grid_values(rr->alpha_min(), rr->alpha_max(), rr->alpha_step());
-    auto betas  = grid_values(rr->beta_min(),  rr->beta_max(),  rr->beta_step());
-
-    struct Point { float alpha, beta; };
-    std::vector<Point> grid;
-    grid.reserve(alphas.size() * betas.size());
-    for (float a : alphas)
-        for (float b : betas)
-            grid.push_back({a, b});
-
-    if (grid.empty()) grid.push_back({rr->alpha_min(), rr->beta_min()});
-
-    int total    = static_cast<int>(grid.size());
+    int total    = static_cast<int>(pairs->size());
     int chunk_sz = simd_lanes;
     int chunks   = (total + chunk_sz - 1) / chunk_sz;
 
@@ -86,14 +68,16 @@ expand_to_batches(const RangePricer::RangePricingRequest* rr, int simd_lanes) {
 
         flatbuffers::FlatBufferBuilder builder(512);
 
-        std::vector<RangePricer::AlphaBetaPair> pairs;
-        pairs.reserve(end - start);
-        for (int i = start; i < end; ++i)
-            pairs.push_back({grid[i].alpha, grid[i].beta});
+        std::vector<RangePricer::AlphaBetaPair> chunk_pairs;
+        chunk_pairs.reserve(end - start);
+        for (int i = start; i < end; ++i) {
+            const auto* p = pairs->Get(i);
+            chunk_pairs.push_back({p->idx(), p->alpha(), p->beta()});
+        }
 
-        auto pairs_vec = builder.CreateVectorOfStructs(pairs);
+        auto pairs_vec = builder.CreateVectorOfStructs(chunk_pairs);
 
-        RangePricer::PricingRequestBuilder pr(builder);
+        RangePricer::PricingParamsBuilder pr(builder);
         pr.add_stock_price(base->stock_price());
         pr.add_strike_price(base->strike_price());
         pr.add_interest_rate(base->interest_rate());
@@ -230,19 +214,16 @@ void run_server(const Config& cfg) {
             }
 
             const auto* rr = RangePricer::GetRangePricingRequest(data);
-            spdlog::info("hash={} alpha=[{:.3f},{:.3f}] beta=[{:.3f},{:.3f}]",
-                         rr->request_hash(),
-                         rr->alpha_min(), rr->alpha_max(),
-                         rr->beta_min(),  rr->beta_max());
+            spdlog::info("hash={} pairs={}", rr->request_hash(), rr->pairs()->size());
 
             auto batches = expand_to_batches(rr, cfg.simd_lanes);
 
             for (auto& batch_buf : batches)
                 dispatch.send(zmq::buffer(batch_buf), zmq::send_flags::none);
 
-            // Collect per-thread BatchPricingResponse buffers into RangePricingResponse
-            flatbuffers::FlatBufferBuilder reply_builder(1024);
-            std::vector<flatbuffers::Offset<RangePricer::BatchPricingResponse>> batch_offsets;
+            // Collect per-thread BatchPricingResponse buffers, sort by idx, flatten
+            struct Result { uint32_t idx; float alpha, beta, price, hedge_ratio; };
+            std::vector<Result> all_results;
 
             for (size_t i = 0; i < batches.size(); ++i) {
                 zmq::message_t result_msg;
@@ -255,22 +236,24 @@ void run_server(const Config& cfg) {
                 const auto* br = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_msg.data());
                 if (!br->Verify(v) || !br->results()) continue;
 
-                std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> result_offsets;
-                result_offsets.reserve(br->results()->size());
-                for (const auto* r : *br->results()) {
-                    result_offsets.push_back(RangePricer::CreatePricingResponse(
-                        reply_builder,
-                        r->alpha(), r->beta(), r->price(), r->hedge_ratio()));
-                }
-
-                auto results_vec = reply_builder.CreateVector(result_offsets);
-                batch_offsets.push_back(RangePricer::CreateBatchPricingResponse(
-                    reply_builder, br->batch_id(), results_vec));
+                for (const auto* r : *br->results())
+                    all_results.push_back({r->idx(), r->alpha(), r->beta(), r->price(), r->hedge_ratio()});
             }
 
-            auto batches_vec = reply_builder.CreateVector(batch_offsets);
+            std::sort(all_results.begin(), all_results.end(),
+                      [](const Result& a, const Result& b) { return a.idx < b.idx; });
+
+            flatbuffers::FlatBufferBuilder reply_builder(1024);
+            std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> result_offsets;
+            result_offsets.reserve(all_results.size());
+            for (const auto& r : all_results) {
+                result_offsets.push_back(RangePricer::CreatePricingResponse(
+                    reply_builder, r.idx, r.alpha, r.beta, r.price, r.hedge_ratio));
+            }
+
+            auto results_vec = reply_builder.CreateVector(result_offsets);
             reply_builder.Finish(RangePricer::CreateRangePricingResponse(
-                reply_builder, rr->request_hash(), batches_vec));
+                reply_builder, rr->request_hash(), results_vec));
 
             frontend.send(zmq::buffer(reply_builder.GetBufferPointer(), reply_builder.GetSize()),
                           zmq::send_flags::none);

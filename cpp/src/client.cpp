@@ -9,6 +9,7 @@
 
 #include <string>
 #include <cstring>
+#include <functional>
 
 DEFINE_double(stock_price,          100.0,   "Stock price");
 DEFINE_double(strike_price,         100.0,   "Strike price");
@@ -21,7 +22,6 @@ DEFINE_double(alpha_step, 0.1,         "Alpha discretization step");
 DEFINE_double(beta_min,   0.0,         "Beta lower bound");
 DEFINE_double(beta_max,   1.0,         "Beta upper bound");
 DEFINE_double(beta_step,  0.1,         "Beta discretization step");
-DEFINE_uint64(hash,       0,           "Request hash");
 DEFINE_string(host,       "localhost", "Server host");
 DEFINE_int32 (port,       5555,        "Server port");
 DEFINE_string(log,        "",          "Log file path (empty for console only)");
@@ -35,27 +35,55 @@ int main(int argc, char* argv[]) {
     // Build RangePricingRequest FlatBuffer
     flatbuffers::FlatBufferBuilder builder(256);
 
-    RangePricer::PricingRequestBuilder pr(builder);
+    // Generate alpha x beta grid from bounds and step
+    auto grid_values = [](float lo, float hi, float step) {
+        std::vector<float> v;
+        if (step <= 0.f) { v.push_back(lo); return v; }
+        for (float x = lo; x <= hi + 1e-6f; x += step)
+            v.push_back(x);
+        return v;
+    };
+
+    auto alphas = grid_values(FLAGS_alpha_min, FLAGS_alpha_max, FLAGS_alpha_step);
+    auto betas  = grid_values(FLAGS_beta_min,  FLAGS_beta_max,  FLAGS_beta_step);
+
+    std::vector<RangePricer::AlphaBetaPair> pairs;
+    pairs.reserve(alphas.size() * betas.size());
+    uint32_t idx = 0;
+    for (float a : alphas)
+        for (float b : betas)
+            pairs.push_back({idx++, a, b});
+
+    auto pairs_vec = builder.CreateVectorOfStructs(pairs);
+
+    RangePricer::PricingParamsBuilder pr(builder);
     pr.add_stock_price(FLAGS_stock_price);
     pr.add_strike_price(FLAGS_strike_price);
     pr.add_interest_rate(FLAGS_interest_rate);
     pr.add_time_to_maturity(FLAGS_time_to_maturity);
     pr.add_stock_discretization(FLAGS_stock_discretization);
-    auto pricing_request = pr.Finish();
+    auto pricing_params = pr.Finish();
+
+    // Hash PricingParams fields
+    auto hash_combine = [](size_t seed, float v) {
+        return seed ^ (std::hash<float>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    };
+    size_t h = 0;
+    h = hash_combine(h, FLAGS_stock_price);
+    h = hash_combine(h, FLAGS_strike_price);
+    h = hash_combine(h, FLAGS_interest_rate);
+    h = hash_combine(h, FLAGS_time_to_maturity);
+    h = hash_combine(h, FLAGS_stock_discretization);
+    uint64_t request_hash = static_cast<uint64_t>(h);
 
     RangePricer::RangePricingRequestBuilder rpr(builder);
-    rpr.add_request(pricing_request);
-    rpr.add_request_hash(FLAGS_hash);
-    rpr.add_alpha_min(FLAGS_alpha_min);
-    rpr.add_alpha_max(FLAGS_alpha_max);
-    rpr.add_alpha_step(FLAGS_alpha_step);
-    rpr.add_beta_min(FLAGS_beta_min);
-    rpr.add_beta_max(FLAGS_beta_max);
-    rpr.add_beta_step(FLAGS_beta_step);
+    rpr.add_request(pricing_params);
+    rpr.add_request_hash(request_hash);
+    rpr.add_pairs(pairs_vec);
     builder.Finish(rpr.Finish());
 
     std::string endpoint = "tcp://" + FLAGS_host + ":" + std::to_string(FLAGS_port);
-    spdlog::info("sending RangePricingRequest hash={} to {}", FLAGS_hash, endpoint);
+    spdlog::info("sending RangePricingRequest hash={} to {}", request_hash, endpoint);
 
     zmq::context_t ctx{1};
     zmq::socket_t  sock{ctx, zmq::socket_type::req};
@@ -65,7 +93,7 @@ int main(int argc, char* argv[]) {
               zmq::send_flags::none);
 
 
-    spdlog::info("done sending RangePricingRequest hash={} to {}", FLAGS_hash, endpoint);
+    spdlog::info("done sending RangePricingRequest hash={} to {}", request_hash, endpoint);
 
 
     zmq::message_t reply;
@@ -81,15 +109,10 @@ int main(int argc, char* argv[]) {
     }
 
     spdlog::info("request_hash={}", range_response->request_hash());
-    if (range_response->batches()) {
-        for (const auto* batch : *range_response->batches()) {
-            spdlog::info("  batch_id={}", batch->batch_id());
-            if (batch->results()) {
-                for (const auto* r : *batch->results()) {
-                    spdlog::info("    alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
-                                 r->alpha(), r->beta(), r->price(), r->hedge_ratio());
-                }
-            }
+    if (range_response->results()) {
+        for (const auto* r : *range_response->results()) {
+            spdlog::info("alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
+                         r->alpha(), r->beta(), r->price(), r->hedge_ratio());
         }
     }
 
