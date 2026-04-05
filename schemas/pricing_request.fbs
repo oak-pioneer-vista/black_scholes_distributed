@@ -35,4 +35,16 @@ table BatchPricingRequest {
     requests:         [PricingRequest] (required);
 }
 
+table PricingResponse {
+    alpha:       double;
+    beta:        double;
+    price:       double;
+    hedge_ratio: double;
+}
+
+table BatchPricingResponse {
+    batch_id: uint64;
+    results:  [PricingResponse];
+}
+
 root_type RangePricingRequest;

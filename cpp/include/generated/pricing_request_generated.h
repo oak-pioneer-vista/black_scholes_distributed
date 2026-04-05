@@ -24,6 +24,12 @@ struct RangePricingRequestBuilder;
 struct BatchPricingRequest;
 struct BatchPricingRequestBuilder;
 
+struct PricingResponse;
+struct PricingResponseBuilder;
+
+struct BatchPricingResponse;
+struct BatchPricingResponseBuilder;
+
 struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PricingRequestBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -351,6 +357,143 @@ inline ::flatbuffers::Offset<BatchPricingRequest> CreateBatchPricingRequestDirec
       _fbb,
       batch_counter_id,
       requests__);
+}
+
+struct PricingResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef PricingResponseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_ALPHA = 4,
+    VT_BETA = 6,
+    VT_PRICE = 8,
+    VT_HEDGE_RATIO = 10
+  };
+  double alpha() const {
+    return GetField<double>(VT_ALPHA, 0.0);
+  }
+  double beta() const {
+    return GetField<double>(VT_BETA, 0.0);
+  }
+  double price() const {
+    return GetField<double>(VT_PRICE, 0.0);
+  }
+  double hedge_ratio() const {
+    return GetField<double>(VT_HEDGE_RATIO, 0.0);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<double>(verifier, VT_ALPHA, 8) &&
+           VerifyField<double>(verifier, VT_BETA, 8) &&
+           VerifyField<double>(verifier, VT_PRICE, 8) &&
+           VerifyField<double>(verifier, VT_HEDGE_RATIO, 8) &&
+           verifier.EndTable();
+  }
+};
+
+struct PricingResponseBuilder {
+  typedef PricingResponse Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_alpha(double alpha) {
+    fbb_.AddElement<double>(PricingResponse::VT_ALPHA, alpha, 0.0);
+  }
+  void add_beta(double beta) {
+    fbb_.AddElement<double>(PricingResponse::VT_BETA, beta, 0.0);
+  }
+  void add_price(double price) {
+    fbb_.AddElement<double>(PricingResponse::VT_PRICE, price, 0.0);
+  }
+  void add_hedge_ratio(double hedge_ratio) {
+    fbb_.AddElement<double>(PricingResponse::VT_HEDGE_RATIO, hedge_ratio, 0.0);
+  }
+  explicit PricingResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<PricingResponse> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<PricingResponse>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<PricingResponse> CreatePricingResponse(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    double alpha = 0.0,
+    double beta = 0.0,
+    double price = 0.0,
+    double hedge_ratio = 0.0) {
+  PricingResponseBuilder builder_(_fbb);
+  builder_.add_hedge_ratio(hedge_ratio);
+  builder_.add_price(price);
+  builder_.add_beta(beta);
+  builder_.add_alpha(alpha);
+  return builder_.Finish();
+}
+
+struct BatchPricingResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef BatchPricingResponseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_BATCH_ID = 4,
+    VT_RESULTS = 6
+  };
+  uint64_t batch_id() const {
+    return GetField<uint64_t>(VT_BATCH_ID, 0);
+  }
+  const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingResponse>> *results() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingResponse>> *>(VT_RESULTS);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint64_t>(verifier, VT_BATCH_ID, 8) &&
+           VerifyOffset(verifier, VT_RESULTS) &&
+           verifier.VerifyVector(results()) &&
+           verifier.VerifyVectorOfTables(results()) &&
+           verifier.EndTable();
+  }
+};
+
+struct BatchPricingResponseBuilder {
+  typedef BatchPricingResponse Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_batch_id(uint64_t batch_id) {
+    fbb_.AddElement<uint64_t>(BatchPricingResponse::VT_BATCH_ID, batch_id, 0);
+  }
+  void add_results(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingResponse>>> results) {
+    fbb_.AddOffset(BatchPricingResponse::VT_RESULTS, results);
+  }
+  explicit BatchPricingResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<BatchPricingResponse> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<BatchPricingResponse>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<BatchPricingResponse> CreateBatchPricingResponse(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t batch_id = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::PricingResponse>>> results = 0) {
+  BatchPricingResponseBuilder builder_(_fbb);
+  builder_.add_batch_id(batch_id);
+  builder_.add_results(results);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<BatchPricingResponse> CreateBatchPricingResponseDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t batch_id = 0,
+    const std::vector<::flatbuffers::Offset<RangePricer::PricingResponse>> *results = nullptr) {
+  auto results__ = results ? _fbb.CreateVector<::flatbuffers::Offset<RangePricer::PricingResponse>>(*results) : 0;
+  return RangePricer::CreateBatchPricingResponse(
+      _fbb,
+      batch_id,
+      results__);
 }
 
 inline const RangePricer::RangePricingRequest *GetRangePricingRequest(const void *buf) {

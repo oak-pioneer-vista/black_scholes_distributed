@@ -1,41 +1,66 @@
 #include "range_pricer.h"
 
+#include <flatbuffers/flatbuffer_builder.h>
+
 #include <cmath>
 #include <stdexcept>
 
 namespace range_pricer {
 
-double price(double spot, double low, double high, double vol, double rate, double expiry) {
-    if (low >= high)   throw std::invalid_argument("low must be less than high");
-    if (vol <= 0.0)    throw std::invalid_argument("vol must be positive");
-    if (expiry <= 0.0) throw std::invalid_argument("expiry must be positive");
+std::pair<double, double> price(const RangePricer::PricingRequest& req) {
+    double S   = req.spot();
+    double L   = req.low();
+    double H   = req.high();
+    double vol = req.vol();
+    double r   = req.rate();
+    double T   = req.expiry();
 
-    double d_low  = (std::log(spot / low)  + (rate - 0.5 * vol * vol) * expiry) / (vol * std::sqrt(expiry));
-    double d_high = (std::log(spot / high) + (rate - 0.5 * vol * vol) * expiry) / (vol * std::sqrt(expiry));
+    if (L >= H)    throw std::invalid_argument("low must be less than high");
+    if (vol <= 0)  throw std::invalid_argument("vol must be positive");
+    if (T <= 0)    throw std::invalid_argument("expiry must be positive");
 
-    auto N = [](double x) { return 0.5 * std::erfc(-x / std::sqrt(2.0)); };
+    double sqrt_T  = std::sqrt(T);
+    double vol_rt  = vol * sqrt_T;
+    double drift   = (r - 0.5 * vol * vol) * T;
 
-    return std::exp(-rate * expiry) * (N(d_low) - N(d_high));
+    double d_low  = (std::log(S / L) + drift) / vol_rt;
+    double d_high = (std::log(S / H) + drift) / vol_rt;
+
+    auto N      = [](double x) { return 0.5 * std::erfc(-x / std::sqrt(2.0)); };
+    auto Nprime = [](double x) { return std::exp(-0.5 * x * x) / std::sqrt(2.0 * M_PI); };
+
+    double disc = std::exp(-r * T);
+    double pv   = disc * (N(d_low) - N(d_high));
+    double hr   = disc * (Nprime(d_low) - Nprime(d_high)) / (S * vol_rt);
+
+    return {pv, hr};
 }
 
-double price(const RangePricer::PricingRequest& req) {
-    return price(req.spot(), req.low(), req.high(), req.vol(), req.rate(), req.expiry());
-}
+std::vector<uint8_t> price_batch(const RangePricer::BatchPricingRequest& batch) {
+    flatbuffers::FlatBufferBuilder builder(512);
 
-std::vector<PricingResult> price_batch(const RangePricer::BatchPricingRequest& batch) {
-    std::vector<PricingResult> results;
-    if (!batch.requests()) return results;
-
-    results.reserve(batch.requests()->size());
-    for (const auto* req : *batch.requests()) {
-        results.push_back({
-            req->request_id()->c_str(),
-            req->alpha(),
-            req->beta(),
-            price(*req)
-        });
+    std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> result_offsets;
+    if (batch.requests()) {
+        result_offsets.reserve(batch.requests()->size());
+        for (const auto* req : *batch.requests()) {
+            auto [pv, hr] = price(*req);
+            result_offsets.push_back(RangePricer::CreatePricingResponse(
+                builder,
+                req->alpha(),
+                req->beta(),
+                pv,
+                hr
+            ));
+        }
     }
-    return results;
+
+    auto results_vec = builder.CreateVector(result_offsets);
+    auto batch_response = RangePricer::CreateBatchPricingResponse(
+        builder, batch.batch_counter_id(), results_vec);
+    builder.Finish(batch_response);
+
+    auto* buf = builder.GetBufferPointer();
+    return {buf, buf + builder.GetSize()};
 }
 
 } // namespace range_pricer

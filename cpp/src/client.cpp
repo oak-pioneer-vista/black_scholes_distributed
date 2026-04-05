@@ -76,8 +76,14 @@ int main(int argc, char* argv[]) {
     zmq::message_t reply;
     [[maybe_unused]] auto _ = sock.recv(reply, zmq::recv_flags::none);
 
-    std::string response(static_cast<char*>(reply.data()), reply.size());
-    spdlog::info("response: {}", response);
+    const auto* batch_response = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(reply.data());
+    spdlog::info("batch_id={}", batch_response->batch_id());
+    if (batch_response->results()) {
+        for (const auto* r : *batch_response->results()) {
+            spdlog::info("alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
+                         r->alpha(), r->beta(), r->price(), r->hedge_ratio());
+        }
+    }
 
     spdlog::shutdown();
     return 0;

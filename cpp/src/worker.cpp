@@ -149,22 +149,18 @@ static void worker_thread(zmq::context_t& ctx, int thread_index) {
                 continue;
             }
 
-            auto pvs = range_pricer::price_batch(*batch);
+            auto result_buf = range_pricer::price_batch(*batch);
 
-            std::string results;
-            results.reserve(128 * pvs.size());
-
-            for (const auto& r : pvs) {
-                results += "id="    + r.request_id +
-                           " alpha=" + std::to_string(r.alpha) +
-                           " beta="  + std::to_string(r.beta) +
-                           " pv="    + std::to_string(r.pv) + "\n";
-                spdlog::info("thread={} batch={} id={} alpha={:.4f} beta={:.4f} pv={:.6f}",
-                             thread_index, batch->batch_counter_id(),
-                             r.request_id, r.alpha, r.beta, r.pv);
+            const auto* batch_response = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_buf.data());
+            if (batch_response->results()) {
+                for (const auto* r : *batch_response->results()) {
+                    spdlog::info("thread={} batch={} alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
+                                 thread_index, batch_response->batch_id(),
+                                 r->alpha(), r->beta(), r->price(), r->hedge_ratio());
+                }
             }
 
-            push.send(zmq::buffer(results), zmq::send_flags::none);
+            push.send(zmq::buffer(result_buf.data(), result_buf.size()), zmq::send_flags::none);
         }
     } catch (const zmq::error_t& e) {
         if (e.num() == ETERM)
@@ -246,15 +242,31 @@ void run_worker_process(const Config& cfg) {
             for (auto& batch_buf : batches)
                 dispatch.send(zmq::buffer(batch_buf), zmq::send_flags::none);
 
-            std::string reply;
+            // Collect per-thread BatchPricingResponse buffers and merge
+            std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> all_results;
+            flatbuffers::FlatBufferBuilder reply_builder(1024);
+
             for (size_t i = 0; i < batches.size(); ++i) {
                 zmq::message_t result_msg;
                 auto res = results.recv(result_msg, zmq::recv_flags::none);
                 if (!res) continue;
-                reply.append(static_cast<char*>(result_msg.data()), result_msg.size());
+
+                const auto* br = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_msg.data());
+                if (br->results()) {
+                    for (const auto* r : *br->results()) {
+                        all_results.push_back(RangePricer::CreatePricingResponse(
+                            reply_builder,
+                            r->alpha(), r->beta(), r->price(), r->hedge_ratio()));
+                    }
+                }
             }
 
-            broker.send(zmq::buffer(reply), zmq::send_flags::none);
+            auto results_vec = reply_builder.CreateVector(all_results);
+            reply_builder.Finish(RangePricer::CreateBatchPricingResponse(
+                reply_builder, rr->request_hash(), results_vec));
+
+            broker.send(zmq::buffer(reply_builder.GetBufferPointer(), reply_builder.GetSize()),
+                        zmq::send_flags::none);
         }
     } catch (const zmq::error_t& e) {
         if (e.num() != ETERM)

@@ -2,22 +2,15 @@
 
 #include "generated/pricing_request_generated.h"
 
-#include <string>
+#include <utility>
 #include <vector>
 
 namespace range_pricer {
 
-struct PricingResult {
-    std::string request_id;
-    double alpha;
-    double beta;
-    double pv;
-};
+// Returns {price, hedge_ratio}.
+std::pair<double, double> price(const RangePricer::PricingRequest& req);
 
-double price(double spot, double low, double high, double vol, double rate, double expiry);
-
-double price(const RangePricer::PricingRequest& req);
-
-std::vector<PricingResult> price_batch(const RangePricer::BatchPricingRequest& batch);
+// Price a batch and return a serialised BatchPricingResponse FlatBuffer.
+std::vector<uint8_t> price_batch(const RangePricer::BatchPricingRequest& batch);
 
 } // namespace range_pricer
