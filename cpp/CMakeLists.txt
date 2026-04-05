@@ -90,3 +90,11 @@ add_executable(range_pricer_client
     src/logger.cpp
 )
 target_link_libraries(range_pricer_client PRIVATE range_pricer_lib cppzmq gflags)
+
+# Tests
+enable_testing()
+find_package(GTest REQUIRED HINTS /opt/homebrew)
+
+add_executable(range_pricer_test test/range_pricer_test.cpp)
+target_link_libraries(range_pricer_test PRIVATE range_pricer_lib GTest::gtest_main)
+add_test(NAME range_pricer_test COMMAND range_pricer_test)
