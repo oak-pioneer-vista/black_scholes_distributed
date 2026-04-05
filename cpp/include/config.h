@@ -3,10 +3,9 @@
 #include <string>
 
 struct Config {
-    int         processes  = 2;
     int         threads    = 4;
+    int         simd_lanes = 4;
     std::string frontend   = "tcp://*:5555";
-    std::string backend    = "ipc:///tmp/range_pricer_backend";
 
     // logging
     std::string log_file   = "range_pricer.log";

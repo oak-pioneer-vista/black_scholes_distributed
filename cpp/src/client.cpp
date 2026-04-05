@@ -10,14 +10,11 @@
 #include <string>
 #include <cstring>
 
-DEFINE_double(spot,       100.0,       "Spot price");
-DEFINE_double(low,        95.0,        "Lower barrier");
-DEFINE_double(high,       105.0,       "Upper barrier");
-DEFINE_double(vol,        0.20,        "Annualised volatility");
-DEFINE_double(rate,       0.05,        "Risk-free rate");
-DEFINE_double(expiry,     1.0,         "Time to expiry (years)");
-DEFINE_double(alpha,      0.0,         "Alpha");
-DEFINE_double(beta,       0.0,         "Beta");
+DEFINE_double(stock_price,          100.0,   "Stock price");
+DEFINE_double(strike_price,         100.0,   "Strike price");
+DEFINE_double(interest_rate,        0.05,    "Interest rate");
+DEFINE_double(time_to_maturity,     1.0,     "Time to maturity (years)");
+DEFINE_double(stock_discretization, 0.01,    "Stock discretization");
 DEFINE_double(alpha_min,  0.0,         "Alpha lower bound");
 DEFINE_double(alpha_max,  1.0,         "Alpha upper bound");
 DEFINE_double(alpha_step, 0.1,         "Alpha discretization step");
@@ -39,14 +36,11 @@ int main(int argc, char* argv[]) {
     flatbuffers::FlatBufferBuilder builder(256);
 
     RangePricer::PricingRequestBuilder pr(builder);
-    pr.add_spot(FLAGS_spot);
-    pr.add_low(FLAGS_low);
-    pr.add_high(FLAGS_high);
-    pr.add_vol(FLAGS_vol);
-    pr.add_rate(FLAGS_rate);
-    pr.add_expiry(FLAGS_expiry);
-    pr.add_alpha(FLAGS_alpha);
-    pr.add_beta(FLAGS_beta);
+    pr.add_stock_price(FLAGS_stock_price);
+    pr.add_strike_price(FLAGS_strike_price);
+    pr.add_interest_rate(FLAGS_interest_rate);
+    pr.add_time_to_maturity(FLAGS_time_to_maturity);
+    pr.add_stock_discretization(FLAGS_stock_discretization);
     auto pricing_request = pr.Finish();
 
     RangePricer::RangePricingRequestBuilder rpr(builder);
@@ -54,10 +48,10 @@ int main(int argc, char* argv[]) {
     rpr.add_request_hash(FLAGS_hash);
     rpr.add_alpha_min(FLAGS_alpha_min);
     rpr.add_alpha_max(FLAGS_alpha_max);
-    rpr.add_alpha_step(static_cast<float>(FLAGS_alpha_step));
+    rpr.add_alpha_step(FLAGS_alpha_step);
     rpr.add_beta_min(FLAGS_beta_min);
     rpr.add_beta_max(FLAGS_beta_max);
-    rpr.add_beta_step(static_cast<float>(FLAGS_beta_step));
+    rpr.add_beta_step(FLAGS_beta_step);
     builder.Finish(rpr.Finish());
 
     std::string endpoint = "tcp://" + FLAGS_host + ":" + std::to_string(FLAGS_port);
@@ -70,23 +64,32 @@ int main(int argc, char* argv[]) {
     sock.send(zmq::buffer(builder.GetBufferPointer(), builder.GetSize()),
               zmq::send_flags::none);
 
+
+    spdlog::info("done sending RangePricingRequest hash={} to {}", FLAGS_hash, endpoint);
+
+
     zmq::message_t reply;
     [[maybe_unused]] auto _ = sock.recv(reply, zmq::recv_flags::none);
 
     flatbuffers::Verifier verifier(static_cast<const uint8_t*>(reply.data()), reply.size());
-    const auto* batch_response = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(reply.data());
-    if (!batch_response->Verify(verifier)) {
+    const auto* range_response = flatbuffers::GetRoot<RangePricer::RangePricingResponse>(reply.data());
+    if (!range_response->Verify(verifier)) {
         std::string raw(static_cast<char*>(reply.data()), reply.size());
         spdlog::error("invalid response ({} bytes): {}", reply.size(), raw);
         spdlog::shutdown();
         return 1;
     }
 
-    spdlog::info("batch_id={}", batch_response->batch_id());
-    if (batch_response->results()) {
-        for (const auto* r : *batch_response->results()) {
-            spdlog::info("alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
-                         r->alpha(), r->beta(), r->price(), r->hedge_ratio());
+    spdlog::info("request_hash={}", range_response->request_hash());
+    if (range_response->batches()) {
+        for (const auto* batch : *range_response->batches()) {
+            spdlog::info("  batch_id={}", batch->batch_id());
+            if (batch->results()) {
+                for (const auto* r : *batch->results()) {
+                    spdlog::info("    alpha={:.4f} beta={:.4f} price={:.6f} hedge_ratio={:.6f}",
+                                 r->alpha(), r->beta(), r->price(), r->hedge_ratio());
+                }
+            }
         }
     }
 

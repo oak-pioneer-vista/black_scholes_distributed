@@ -13,7 +13,6 @@
 #include <cstring>
 #include <thread>
 #include <vector>
-#include <cmath>
 #include <csignal>
 #include <unistd.h>
 
@@ -47,17 +46,17 @@ static void set_thread_affinity(int cpu_index) {
 }
 
 // ── batch expansion ───────────────────────────────────────────────────────────
-// Expand a RangePricingRequest into one BatchPricingRequest FlatBuffer per
-// thread by walking the alpha × beta grid and slicing into equal chunks.
+// Expand a RangePricingRequest into BatchPricingRequest FlatBuffers, each
+// containing at most simd_lanes AlphaBetaPairs.
 
 static std::vector<std::vector<uint8_t>>
-expand_to_batches(const RangePricer::RangePricingRequest* rr, int n_threads) {
+expand_to_batches(const RangePricer::RangePricingRequest* rr, int simd_lanes) {
     const auto* base = rr->request();
 
-    auto grid_values = [](double lo, double hi, float step) {
-        std::vector<double> v;
+    auto grid_values = [](float lo, float hi, float step) {
+        std::vector<float> v;
         if (step <= 0.f) { v.push_back(lo); return v; }
-        for (double x = lo; x <= hi + 1e-9; x += step)
+        for (float x = lo; x <= hi + 1e-6f; x += step)
             v.push_back(x);
         return v;
     };
@@ -65,18 +64,18 @@ expand_to_batches(const RangePricer::RangePricingRequest* rr, int n_threads) {
     auto alphas = grid_values(rr->alpha_min(), rr->alpha_max(), rr->alpha_step());
     auto betas  = grid_values(rr->beta_min(),  rr->beta_max(),  rr->beta_step());
 
-    struct Point { double alpha, beta; };
+    struct Point { float alpha, beta; };
     std::vector<Point> grid;
     grid.reserve(alphas.size() * betas.size());
-    for (double a : alphas)
-        for (double b : betas)
+    for (float a : alphas)
+        for (float b : betas)
             grid.push_back({a, b});
 
-    if (grid.empty()) grid.push_back({base->alpha(), base->beta()});
+    if (grid.empty()) grid.push_back({rr->alpha_min(), rr->beta_min()});
 
     int total    = static_cast<int>(grid.size());
-    int chunks   = std::min(n_threads, total);
-    int chunk_sz = (total + chunks - 1) / chunks;
+    int chunk_sz = simd_lanes;
+    int chunks   = (total + chunk_sz - 1) / chunk_sz;
 
     std::vector<std::vector<uint8_t>> batches;
     batches.reserve(chunks);
@@ -95,14 +94,11 @@ expand_to_batches(const RangePricer::RangePricingRequest* rr, int n_threads) {
         auto pairs_vec = builder.CreateVectorOfStructs(pairs);
 
         RangePricer::PricingRequestBuilder pr(builder);
-        pr.add_spot(base->spot());
-        pr.add_low(base->low());
-        pr.add_high(base->high());
-        pr.add_vol(base->vol());
-        pr.add_rate(base->rate());
-        pr.add_expiry(base->expiry());
-        pr.add_alpha(base->alpha());
-        pr.add_beta(base->beta());
+        pr.add_stock_price(base->stock_price());
+        pr.add_strike_price(base->strike_price());
+        pr.add_interest_rate(base->interest_rate());
+        pr.add_time_to_maturity(base->time_to_maturity());
+        pr.add_stock_discretization(base->stock_discretization());
         auto request = pr.Finish();
 
         RangePricer::BatchPricingRequestBuilder br(builder);
@@ -119,8 +115,8 @@ expand_to_batches(const RangePricer::RangePricingRequest* rr, int n_threads) {
 }
 
 // ── worker thread ─────────────────────────────────────────────────────────────
-// Pulls BatchPricingRequest from inproc://dispatch, prices all requests,
-// pushes a result string to inproc://results.
+// Pulls BatchPricingRequest from inproc://dispatch, prices the batch,
+// pushes the serialised BatchPricingResponse to inproc://results.
 
 static void worker_thread(zmq::context_t& ctx, int thread_index) {
     set_thread_affinity(thread_index);
@@ -177,7 +173,7 @@ static void worker_thread(zmq::context_t& ctx, int thread_index) {
     }
 }
 
-// ── shutdown monitor thread ───────────────────────────────────────────────────
+// ── shutdown monitor thread ──────────────────────────────────────────────────
 
 static void shutdown_monitor(zmq::context_t& ctx) {
     sigset_t mask;
@@ -186,19 +182,13 @@ static void shutdown_monitor(zmq::context_t& ctx) {
     sigaddset(&mask, SIGINT);
     int sig = 0;
     sigwait(&mask, &sig);
-    spdlog::info("worker pid={}: signal {}, shutting down", getpid(), sig);
+    spdlog::info("signal {}, shutting down", sig);
     ctx.shutdown();
 }
 
-// ── worker process (public) ──────────────────────────────────────────────────
+// ── server (public) ──────────────────────────────────────────────────────────
 
-void run_worker_process(const Config& cfg) {
-    setup_logger(cfg.log_file, cfg.log_utc, cfg.log_tid, cfg.log_cpu);
-    spdlog::flush_every(std::chrono::seconds(1));
-
-    // SIGINT/SIGTERM already blocked (inherited from parent before fork).
-    // shutdown_monitor handles them via sigwait.
-
+void run_server(const Config& cfg) {
     zmq::context_t ctx(1);
 
     zmq::socket_t dispatch(ctx, zmq::socket_type::push);
@@ -214,16 +204,16 @@ void run_worker_process(const Config& cfg) {
 
     std::thread monitor(shutdown_monitor, std::ref(ctx));
 
-    spdlog::info("worker process pid={} threads={} backend={}",
-                 getpid(), cfg.threads, cfg.backend);
+    spdlog::info("server pid={} threads={} frontend={}",
+                 getpid(), cfg.threads, cfg.frontend);
 
     try {
-        zmq::socket_t broker(ctx, zmq::socket_type::rep);
-        broker.connect(cfg.backend);
+        zmq::socket_t frontend(ctx, zmq::socket_type::rep);
+        frontend.bind(cfg.frontend);
 
         while (true) {
             zmq::message_t msg;
-            auto r = broker.recv(msg, zmq::recv_flags::none);
+            auto r = frontend.recv(msg, zmq::recv_flags::none);
             if (!r) continue;
 
             const auto* data = static_cast<const uint8_t*>(msg.data());
@@ -231,28 +221,28 @@ void run_worker_process(const Config& cfg) {
 
             flatbuffers::Verifier verifier(data, size);
             if (!RangePricer::VerifyRangePricingRequestBuffer(verifier)) {
-                spdlog::warn("process {}: invalid RangePricingRequest ({} bytes)", getpid(), size);
+                spdlog::warn("invalid RangePricingRequest ({} bytes)", size);
                 flatbuffers::FlatBufferBuilder err_builder(64);
-                err_builder.Finish(RangePricer::CreateBatchPricingResponse(err_builder));
-                broker.send(zmq::buffer(err_builder.GetBufferPointer(), err_builder.GetSize()),
-                            zmq::send_flags::none);
+                err_builder.Finish(RangePricer::CreateRangePricingResponse(err_builder));
+                frontend.send(zmq::buffer(err_builder.GetBufferPointer(), err_builder.GetSize()),
+                              zmq::send_flags::none);
                 continue;
             }
 
             const auto* rr = RangePricer::GetRangePricingRequest(data);
-            spdlog::info("process={} hash={} alpha=[{:.3f},{:.3f}] beta=[{:.3f},{:.3f}]",
-                         getpid(), rr->request_hash(),
+            spdlog::info("hash={} alpha=[{:.3f},{:.3f}] beta=[{:.3f},{:.3f}]",
+                         rr->request_hash(),
                          rr->alpha_min(), rr->alpha_max(),
                          rr->beta_min(),  rr->beta_max());
 
-            auto batches = expand_to_batches(rr, cfg.threads);
+            auto batches = expand_to_batches(rr, cfg.simd_lanes);
 
             for (auto& batch_buf : batches)
                 dispatch.send(zmq::buffer(batch_buf), zmq::send_flags::none);
 
-            // Collect per-thread BatchPricingResponse buffers and merge
-            std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> all_results;
+            // Collect per-thread BatchPricingResponse buffers into RangePricingResponse
             flatbuffers::FlatBufferBuilder reply_builder(1024);
+            std::vector<flatbuffers::Offset<RangePricer::BatchPricingResponse>> batch_offsets;
 
             for (size_t i = 0; i < batches.size(); ++i) {
                 zmq::message_t result_msg;
@@ -265,26 +255,32 @@ void run_worker_process(const Config& cfg) {
                 const auto* br = flatbuffers::GetRoot<RangePricer::BatchPricingResponse>(result_msg.data());
                 if (!br->Verify(v) || !br->results()) continue;
 
+                std::vector<flatbuffers::Offset<RangePricer::PricingResponse>> result_offsets;
+                result_offsets.reserve(br->results()->size());
                 for (const auto* r : *br->results()) {
-                    all_results.push_back(RangePricer::CreatePricingResponse(
+                    result_offsets.push_back(RangePricer::CreatePricingResponse(
                         reply_builder,
                         r->alpha(), r->beta(), r->price(), r->hedge_ratio()));
                 }
+
+                auto results_vec = reply_builder.CreateVector(result_offsets);
+                batch_offsets.push_back(RangePricer::CreateBatchPricingResponse(
+                    reply_builder, br->batch_id(), results_vec));
             }
 
-            auto results_vec = reply_builder.CreateVector(all_results);
-            reply_builder.Finish(RangePricer::CreateBatchPricingResponse(
-                reply_builder, rr->request_hash(), results_vec));
+            auto batches_vec = reply_builder.CreateVector(batch_offsets);
+            reply_builder.Finish(RangePricer::CreateRangePricingResponse(
+                reply_builder, rr->request_hash(), batches_vec));
 
-            broker.send(zmq::buffer(reply_builder.GetBufferPointer(), reply_builder.GetSize()),
-                        zmq::send_flags::none);
+            frontend.send(zmq::buffer(reply_builder.GetBufferPointer(), reply_builder.GetSize()),
+                          zmq::send_flags::none);
         }
     } catch (const zmq::error_t& e) {
         if (e.num() != ETERM)
-            spdlog::error("process {}: zmq error: {}", getpid(), e.what());
+            spdlog::error("server: zmq error: {}", e.what());
     }
 
     for (auto& t : threads) t.join();
     if (monitor.joinable()) monitor.join();
-    spdlog::debug("worker pid={}: all threads joined", getpid());
+    spdlog::debug("all threads joined");
 }

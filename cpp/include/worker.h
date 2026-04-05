@@ -2,8 +2,7 @@
 
 struct Config;
 
-// Runs a worker process: receives RangePricingRequest from the broker,
-// expands the alpha×beta grid into BatchPricingRequests, distributes them
-// to N worker threads via inproc PUSH/PULL, collects results, replies.
-// Blocks until SIGTERM/SIGINT.
-void run_worker_process(const Config& cfg);
+// Runs the server: binds REP on cfg.frontend, spawns N worker threads with
+// CPU affinity, dispatches BatchPricingRequests via inproc PUSH/PULL, collects
+// results into RangePricingResponse, and replies. Blocks until SIGINT/SIGTERM.
+void run_server(const Config& cfg);

@@ -2,16 +2,12 @@
 // Compile: flatc --cpp --python -o <out_dir> pricing_request.fbs
 
 namespace RangePricer;
-
 table PricingRequest {
-    spot:       double;
-    low:        double;
-    high:       double;
-    vol:        double;
-    rate:       double;
-    expiry:     double;
-    alpha:      double;   // model parameter alpha
-    beta:       double;   // model parameter beta
+    stock_price:          float;
+    strike_price:         float;
+    interest_rate:        float;
+    time_to_maturity:     float;
+    stock_discretization: float;
 }
 
 // RangePricingRequest embeds a PricingRequest (including alpha/beta) and adds
@@ -20,18 +16,18 @@ table RangePricingRequest {
     request:      PricingRequest (required);
     request_hash: uint64;
 
-    alpha_min:  double;   // lower bound for alpha
-    alpha_max:  double;   // upper bound for alpha
+    alpha_min:  float;   // lower bound for alpha
+    alpha_max:  float;   // upper bound for alpha
     alpha_step: float;    // discretization step for alpha
 
-    beta_min:   double;   // lower bound for beta
-    beta_max:   double;   // upper bound for beta
+    beta_min:   float;   // lower bound for beta
+    beta_max:   float;   // upper bound for beta
     beta_step:  float;    // discretization step for beta
 }
 
 struct AlphaBetaPair {
-    alpha: double;
-    beta:  double;
+    alpha: float;
+    beta:  float;
 }
 
 table BatchPricingRequest {
@@ -41,15 +37,20 @@ table BatchPricingRequest {
 }
 
 table PricingResponse {
-    alpha:       double;
-    beta:        double;
-    price:       double;
-    hedge_ratio: double;
+    alpha:       float;
+    beta:        float;
+    price:       float;
+    hedge_ratio: float;
 }
 
 table BatchPricingResponse {
     batch_id: uint64;
     results:  [PricingResponse];
+}
+
+table RangePricingResponse {
+    request_hash: uint64;
+    batches:      [BatchPricingResponse];
 }
 
 root_type RangePricingRequest;

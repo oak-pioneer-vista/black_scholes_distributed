@@ -32,76 +32,64 @@ struct PricingResponseBuilder;
 struct BatchPricingResponse;
 struct BatchPricingResponseBuilder;
 
-FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(8) AlphaBetaPair FLATBUFFERS_FINAL_CLASS {
+struct RangePricingResponse;
+struct RangePricingResponseBuilder;
+
+FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) AlphaBetaPair FLATBUFFERS_FINAL_CLASS {
  private:
-  double alpha_;
-  double beta_;
+  float alpha_;
+  float beta_;
 
  public:
   AlphaBetaPair()
       : alpha_(0),
         beta_(0) {
   }
-  AlphaBetaPair(double _alpha, double _beta)
+  AlphaBetaPair(float _alpha, float _beta)
       : alpha_(::flatbuffers::EndianScalar(_alpha)),
         beta_(::flatbuffers::EndianScalar(_beta)) {
   }
-  double alpha() const {
+  float alpha() const {
     return ::flatbuffers::EndianScalar(alpha_);
   }
-  double beta() const {
+  float beta() const {
     return ::flatbuffers::EndianScalar(beta_);
   }
 };
-FLATBUFFERS_STRUCT_END(AlphaBetaPair, 16);
+FLATBUFFERS_STRUCT_END(AlphaBetaPair, 8);
 
 struct PricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PricingRequestBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_SPOT = 4,
-    VT_LOW = 6,
-    VT_HIGH = 8,
-    VT_VOL = 10,
-    VT_RATE = 12,
-    VT_EXPIRY = 14,
-    VT_ALPHA = 16,
-    VT_BETA = 18
+    VT_STOCK_PRICE = 4,
+    VT_STRIKE_PRICE = 6,
+    VT_INTEREST_RATE = 8,
+    VT_TIME_TO_MATURITY = 10,
+    VT_STOCK_DISCRETIZATION = 12
   };
-  double spot() const {
-    return GetField<double>(VT_SPOT, 0.0);
+  float stock_price() const {
+    return GetField<float>(VT_STOCK_PRICE, 0.0f);
   }
-  double low() const {
-    return GetField<double>(VT_LOW, 0.0);
+  float strike_price() const {
+    return GetField<float>(VT_STRIKE_PRICE, 0.0f);
   }
-  double high() const {
-    return GetField<double>(VT_HIGH, 0.0);
+  float interest_rate() const {
+    return GetField<float>(VT_INTEREST_RATE, 0.0f);
   }
-  double vol() const {
-    return GetField<double>(VT_VOL, 0.0);
+  float time_to_maturity() const {
+    return GetField<float>(VT_TIME_TO_MATURITY, 0.0f);
   }
-  double rate() const {
-    return GetField<double>(VT_RATE, 0.0);
-  }
-  double expiry() const {
-    return GetField<double>(VT_EXPIRY, 0.0);
-  }
-  double alpha() const {
-    return GetField<double>(VT_ALPHA, 0.0);
-  }
-  double beta() const {
-    return GetField<double>(VT_BETA, 0.0);
+  float stock_discretization() const {
+    return GetField<float>(VT_STOCK_DISCRETIZATION, 0.0f);
   }
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_SPOT, 8) &&
-           VerifyField<double>(verifier, VT_LOW, 8) &&
-           VerifyField<double>(verifier, VT_HIGH, 8) &&
-           VerifyField<double>(verifier, VT_VOL, 8) &&
-           VerifyField<double>(verifier, VT_RATE, 8) &&
-           VerifyField<double>(verifier, VT_EXPIRY, 8) &&
-           VerifyField<double>(verifier, VT_ALPHA, 8) &&
-           VerifyField<double>(verifier, VT_BETA, 8) &&
+           VerifyField<float>(verifier, VT_STOCK_PRICE, 4) &&
+           VerifyField<float>(verifier, VT_STRIKE_PRICE, 4) &&
+           VerifyField<float>(verifier, VT_INTEREST_RATE, 4) &&
+           VerifyField<float>(verifier, VT_TIME_TO_MATURITY, 4) &&
+           VerifyField<float>(verifier, VT_STOCK_DISCRETIZATION, 4) &&
            verifier.EndTable();
   }
 };
@@ -110,29 +98,20 @@ struct PricingRequestBuilder {
   typedef PricingRequest Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_spot(double spot) {
-    fbb_.AddElement<double>(PricingRequest::VT_SPOT, spot, 0.0);
+  void add_stock_price(float stock_price) {
+    fbb_.AddElement<float>(PricingRequest::VT_STOCK_PRICE, stock_price, 0.0f);
   }
-  void add_low(double low) {
-    fbb_.AddElement<double>(PricingRequest::VT_LOW, low, 0.0);
+  void add_strike_price(float strike_price) {
+    fbb_.AddElement<float>(PricingRequest::VT_STRIKE_PRICE, strike_price, 0.0f);
   }
-  void add_high(double high) {
-    fbb_.AddElement<double>(PricingRequest::VT_HIGH, high, 0.0);
+  void add_interest_rate(float interest_rate) {
+    fbb_.AddElement<float>(PricingRequest::VT_INTEREST_RATE, interest_rate, 0.0f);
   }
-  void add_vol(double vol) {
-    fbb_.AddElement<double>(PricingRequest::VT_VOL, vol, 0.0);
+  void add_time_to_maturity(float time_to_maturity) {
+    fbb_.AddElement<float>(PricingRequest::VT_TIME_TO_MATURITY, time_to_maturity, 0.0f);
   }
-  void add_rate(double rate) {
-    fbb_.AddElement<double>(PricingRequest::VT_RATE, rate, 0.0);
-  }
-  void add_expiry(double expiry) {
-    fbb_.AddElement<double>(PricingRequest::VT_EXPIRY, expiry, 0.0);
-  }
-  void add_alpha(double alpha) {
-    fbb_.AddElement<double>(PricingRequest::VT_ALPHA, alpha, 0.0);
-  }
-  void add_beta(double beta) {
-    fbb_.AddElement<double>(PricingRequest::VT_BETA, beta, 0.0);
+  void add_stock_discretization(float stock_discretization) {
+    fbb_.AddElement<float>(PricingRequest::VT_STOCK_DISCRETIZATION, stock_discretization, 0.0f);
   }
   explicit PricingRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -147,23 +126,17 @@ struct PricingRequestBuilder {
 
 inline ::flatbuffers::Offset<PricingRequest> CreatePricingRequest(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double spot = 0.0,
-    double low = 0.0,
-    double high = 0.0,
-    double vol = 0.0,
-    double rate = 0.0,
-    double expiry = 0.0,
-    double alpha = 0.0,
-    double beta = 0.0) {
+    float stock_price = 0.0f,
+    float strike_price = 0.0f,
+    float interest_rate = 0.0f,
+    float time_to_maturity = 0.0f,
+    float stock_discretization = 0.0f) {
   PricingRequestBuilder builder_(_fbb);
-  builder_.add_beta(beta);
-  builder_.add_alpha(alpha);
-  builder_.add_expiry(expiry);
-  builder_.add_rate(rate);
-  builder_.add_vol(vol);
-  builder_.add_high(high);
-  builder_.add_low(low);
-  builder_.add_spot(spot);
+  builder_.add_stock_discretization(stock_discretization);
+  builder_.add_time_to_maturity(time_to_maturity);
+  builder_.add_interest_rate(interest_rate);
+  builder_.add_strike_price(strike_price);
+  builder_.add_stock_price(stock_price);
   return builder_.Finish();
 }
 
@@ -185,20 +158,20 @@ struct RangePricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Tabl
   uint64_t request_hash() const {
     return GetField<uint64_t>(VT_REQUEST_HASH, 0);
   }
-  double alpha_min() const {
-    return GetField<double>(VT_ALPHA_MIN, 0.0);
+  float alpha_min() const {
+    return GetField<float>(VT_ALPHA_MIN, 0.0f);
   }
-  double alpha_max() const {
-    return GetField<double>(VT_ALPHA_MAX, 0.0);
+  float alpha_max() const {
+    return GetField<float>(VT_ALPHA_MAX, 0.0f);
   }
   float alpha_step() const {
     return GetField<float>(VT_ALPHA_STEP, 0.0f);
   }
-  double beta_min() const {
-    return GetField<double>(VT_BETA_MIN, 0.0);
+  float beta_min() const {
+    return GetField<float>(VT_BETA_MIN, 0.0f);
   }
-  double beta_max() const {
-    return GetField<double>(VT_BETA_MAX, 0.0);
+  float beta_max() const {
+    return GetField<float>(VT_BETA_MAX, 0.0f);
   }
   float beta_step() const {
     return GetField<float>(VT_BETA_STEP, 0.0f);
@@ -209,11 +182,11 @@ struct RangePricingRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Tabl
            VerifyOffsetRequired(verifier, VT_REQUEST) &&
            verifier.VerifyTable(request()) &&
            VerifyField<uint64_t>(verifier, VT_REQUEST_HASH, 8) &&
-           VerifyField<double>(verifier, VT_ALPHA_MIN, 8) &&
-           VerifyField<double>(verifier, VT_ALPHA_MAX, 8) &&
+           VerifyField<float>(verifier, VT_ALPHA_MIN, 4) &&
+           VerifyField<float>(verifier, VT_ALPHA_MAX, 4) &&
            VerifyField<float>(verifier, VT_ALPHA_STEP, 4) &&
-           VerifyField<double>(verifier, VT_BETA_MIN, 8) &&
-           VerifyField<double>(verifier, VT_BETA_MAX, 8) &&
+           VerifyField<float>(verifier, VT_BETA_MIN, 4) &&
+           VerifyField<float>(verifier, VT_BETA_MAX, 4) &&
            VerifyField<float>(verifier, VT_BETA_STEP, 4) &&
            verifier.EndTable();
   }
@@ -229,20 +202,20 @@ struct RangePricingRequestBuilder {
   void add_request_hash(uint64_t request_hash) {
     fbb_.AddElement<uint64_t>(RangePricingRequest::VT_REQUEST_HASH, request_hash, 0);
   }
-  void add_alpha_min(double alpha_min) {
-    fbb_.AddElement<double>(RangePricingRequest::VT_ALPHA_MIN, alpha_min, 0.0);
+  void add_alpha_min(float alpha_min) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_ALPHA_MIN, alpha_min, 0.0f);
   }
-  void add_alpha_max(double alpha_max) {
-    fbb_.AddElement<double>(RangePricingRequest::VT_ALPHA_MAX, alpha_max, 0.0);
+  void add_alpha_max(float alpha_max) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_ALPHA_MAX, alpha_max, 0.0f);
   }
   void add_alpha_step(float alpha_step) {
     fbb_.AddElement<float>(RangePricingRequest::VT_ALPHA_STEP, alpha_step, 0.0f);
   }
-  void add_beta_min(double beta_min) {
-    fbb_.AddElement<double>(RangePricingRequest::VT_BETA_MIN, beta_min, 0.0);
+  void add_beta_min(float beta_min) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_BETA_MIN, beta_min, 0.0f);
   }
-  void add_beta_max(double beta_max) {
-    fbb_.AddElement<double>(RangePricingRequest::VT_BETA_MAX, beta_max, 0.0);
+  void add_beta_max(float beta_max) {
+    fbb_.AddElement<float>(RangePricingRequest::VT_BETA_MAX, beta_max, 0.0f);
   }
   void add_beta_step(float beta_step) {
     fbb_.AddElement<float>(RangePricingRequest::VT_BETA_STEP, beta_step, 0.0f);
@@ -263,20 +236,20 @@ inline ::flatbuffers::Offset<RangePricingRequest> CreateRangePricingRequest(
     ::flatbuffers::FlatBufferBuilder &_fbb,
     ::flatbuffers::Offset<RangePricer::PricingRequest> request = 0,
     uint64_t request_hash = 0,
-    double alpha_min = 0.0,
-    double alpha_max = 0.0,
+    float alpha_min = 0.0f,
+    float alpha_max = 0.0f,
     float alpha_step = 0.0f,
-    double beta_min = 0.0,
-    double beta_max = 0.0,
+    float beta_min = 0.0f,
+    float beta_max = 0.0f,
     float beta_step = 0.0f) {
   RangePricingRequestBuilder builder_(_fbb);
-  builder_.add_beta_max(beta_max);
-  builder_.add_beta_min(beta_min);
-  builder_.add_alpha_max(alpha_max);
-  builder_.add_alpha_min(alpha_min);
   builder_.add_request_hash(request_hash);
   builder_.add_beta_step(beta_step);
+  builder_.add_beta_max(beta_max);
+  builder_.add_beta_min(beta_min);
   builder_.add_alpha_step(alpha_step);
+  builder_.add_alpha_max(alpha_max);
+  builder_.add_alpha_min(alpha_min);
   builder_.add_request(request);
   return builder_.Finish();
 }
@@ -368,25 +341,25 @@ struct PricingResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_PRICE = 8,
     VT_HEDGE_RATIO = 10
   };
-  double alpha() const {
-    return GetField<double>(VT_ALPHA, 0.0);
+  float alpha() const {
+    return GetField<float>(VT_ALPHA, 0.0f);
   }
-  double beta() const {
-    return GetField<double>(VT_BETA, 0.0);
+  float beta() const {
+    return GetField<float>(VT_BETA, 0.0f);
   }
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  float price() const {
+    return GetField<float>(VT_PRICE, 0.0f);
   }
-  double hedge_ratio() const {
-    return GetField<double>(VT_HEDGE_RATIO, 0.0);
+  float hedge_ratio() const {
+    return GetField<float>(VT_HEDGE_RATIO, 0.0f);
   }
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_ALPHA, 8) &&
-           VerifyField<double>(verifier, VT_BETA, 8) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_HEDGE_RATIO, 8) &&
+           VerifyField<float>(verifier, VT_ALPHA, 4) &&
+           VerifyField<float>(verifier, VT_BETA, 4) &&
+           VerifyField<float>(verifier, VT_PRICE, 4) &&
+           VerifyField<float>(verifier, VT_HEDGE_RATIO, 4) &&
            verifier.EndTable();
   }
 };
@@ -395,17 +368,17 @@ struct PricingResponseBuilder {
   typedef PricingResponse Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_alpha(double alpha) {
-    fbb_.AddElement<double>(PricingResponse::VT_ALPHA, alpha, 0.0);
+  void add_alpha(float alpha) {
+    fbb_.AddElement<float>(PricingResponse::VT_ALPHA, alpha, 0.0f);
   }
-  void add_beta(double beta) {
-    fbb_.AddElement<double>(PricingResponse::VT_BETA, beta, 0.0);
+  void add_beta(float beta) {
+    fbb_.AddElement<float>(PricingResponse::VT_BETA, beta, 0.0f);
   }
-  void add_price(double price) {
-    fbb_.AddElement<double>(PricingResponse::VT_PRICE, price, 0.0);
+  void add_price(float price) {
+    fbb_.AddElement<float>(PricingResponse::VT_PRICE, price, 0.0f);
   }
-  void add_hedge_ratio(double hedge_ratio) {
-    fbb_.AddElement<double>(PricingResponse::VT_HEDGE_RATIO, hedge_ratio, 0.0);
+  void add_hedge_ratio(float hedge_ratio) {
+    fbb_.AddElement<float>(PricingResponse::VT_HEDGE_RATIO, hedge_ratio, 0.0f);
   }
   explicit PricingResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -420,10 +393,10 @@ struct PricingResponseBuilder {
 
 inline ::flatbuffers::Offset<PricingResponse> CreatePricingResponse(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double alpha = 0.0,
-    double beta = 0.0,
-    double price = 0.0,
-    double hedge_ratio = 0.0) {
+    float alpha = 0.0f,
+    float beta = 0.0f,
+    float price = 0.0f,
+    float hedge_ratio = 0.0f) {
   PricingResponseBuilder builder_(_fbb);
   builder_.add_hedge_ratio(hedge_ratio);
   builder_.add_price(price);
@@ -495,6 +468,71 @@ inline ::flatbuffers::Offset<BatchPricingResponse> CreateBatchPricingResponseDir
       _fbb,
       batch_id,
       results__);
+}
+
+struct RangePricingResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef RangePricingResponseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_REQUEST_HASH = 4,
+    VT_BATCHES = 6
+  };
+  uint64_t request_hash() const {
+    return GetField<uint64_t>(VT_REQUEST_HASH, 0);
+  }
+  const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>> *batches() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>> *>(VT_BATCHES);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint64_t>(verifier, VT_REQUEST_HASH, 8) &&
+           VerifyOffset(verifier, VT_BATCHES) &&
+           verifier.VerifyVector(batches()) &&
+           verifier.VerifyVectorOfTables(batches()) &&
+           verifier.EndTable();
+  }
+};
+
+struct RangePricingResponseBuilder {
+  typedef RangePricingResponse Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_request_hash(uint64_t request_hash) {
+    fbb_.AddElement<uint64_t>(RangePricingResponse::VT_REQUEST_HASH, request_hash, 0);
+  }
+  void add_batches(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>>> batches) {
+    fbb_.AddOffset(RangePricingResponse::VT_BATCHES, batches);
+  }
+  explicit RangePricingResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<RangePricingResponse> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<RangePricingResponse>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<RangePricingResponse> CreateRangePricingResponse(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t request_hash = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>>> batches = 0) {
+  RangePricingResponseBuilder builder_(_fbb);
+  builder_.add_request_hash(request_hash);
+  builder_.add_batches(batches);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<RangePricingResponse> CreateRangePricingResponseDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t request_hash = 0,
+    const std::vector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>> *batches = nullptr) {
+  auto batches__ = batches ? _fbb.CreateVector<::flatbuffers::Offset<RangePricer::BatchPricingResponse>>(*batches) : 0;
+  return RangePricer::CreateRangePricingResponse(
+      _fbb,
+      request_hash,
+      batches__);
 }
 
 inline const RangePricer::RangePricingRequest *GetRangePricingRequest(const void *buf) {

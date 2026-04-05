@@ -25,6 +25,20 @@ target_include_directories(flatbuffers_headers INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# Generate C++ header from FlatBuffers schema.
+# Re-runs flatc when the .fbs file changes; all targets that link
+# range_pricer_lib see the generated header as a build dependency.
+find_program(FLATC flatc REQUIRED)
+set(FBS_SCHEMA ${CMAKE_CURRENT_SOURCE_DIR}/../schemas/pricing_request.fbs)
+set(FBS_GENERATED ${CMAKE_CURRENT_SOURCE_DIR}/include/generated/pricing_request_generated.h)
+add_custom_command(
+    OUTPUT  ${FBS_GENERATED}
+    COMMAND ${FLATC} --cpp -o ${CMAKE_CURRENT_SOURCE_DIR}/include/generated ${FBS_SCHEMA}
+    DEPENDS ${FBS_SCHEMA}
+    COMMENT "Generating FlatBuffers C++ header"
+)
+add_custom_target(flatbuffers_gen DEPENDS ${FBS_GENERATED})
+
 # ZeroMQ — system library + cppzmq header vendored at include/zmq.hpp
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZMQ REQUIRED libzmq)
@@ -48,6 +62,7 @@ target_include_directories(range_pricer_lib PUBLIC
 )
 
 target_link_libraries(range_pricer_lib PUBLIC flatbuffers_headers)
+add_dependencies(range_pricer_lib flatbuffers_gen)
 
 find_package(Threads REQUIRED)
 

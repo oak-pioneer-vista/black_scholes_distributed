@@ -66,22 +66,8 @@ class PricingRequest(object):
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
-    # PricingRequest
-    def Alpha(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
-
-    # PricingRequest
-    def Beta(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
-        return 0.0
-
 def PricingRequestStart(builder):
-    builder.StartObject(8)
+    builder.StartObject(6)
 
 def Start(builder):
     PricingRequestStart(builder)
@@ -121,18 +107,6 @@ def PricingRequestAddExpiry(builder, expiry):
 
 def AddExpiry(builder, expiry):
     PricingRequestAddExpiry(builder, expiry)
-
-def PricingRequestAddAlpha(builder, alpha):
-    builder.PrependFloat64Slot(6, alpha, 0.0)
-
-def AddAlpha(builder, alpha):
-    PricingRequestAddAlpha(builder, alpha)
-
-def PricingRequestAddBeta(builder, beta):
-    builder.PrependFloat64Slot(7, beta, 0.0)
-
-def AddBeta(builder, beta):
-    PricingRequestAddBeta(builder, beta)
 
 def PricingRequestEnd(builder):
     return builder.EndObject()
